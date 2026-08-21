@@ -2,7 +2,7 @@
 # ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11)
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox v1.0"
 $DriveRoot = $PSScriptRoot
 
 # Разрешаем TLS 1.2 и TLS 1.3 для старых Windows 7 / 8.1
@@ -33,7 +33,7 @@ try {
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                               УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА                                  " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.0                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
@@ -57,8 +57,9 @@ function Main-Menu {
     Write-Host "  | [3] Win11Debloat                  | Очистка Windows 11 от телеметрии, рекламы и мусора   |" -ForegroundColor Gray
     Write-Host "  | [4] Базовый набор в 1 клик        | Chrome + 7-Zip + VLC + Telegram + Notepad++ (Winget) |" -ForegroundColor Gray
     Write-Host "  | [5] Установка UniGetUI            | Графический менеджер программ (Winget/Chocolatey)    |" -ForegroundColor Gray
-    Write-Host "  | [6] WPI / MInstAll (Offline)      | Запуск оффлайн-сборника программ с вашей флешки      |" -ForegroundColor Gray
-    Write-Host "  | [7] Активатор AAct / KMS (Offline)| Локальная оффлайн-активация без интернета            |" -ForegroundColor Gray
+    Write-Host "  | [6] Установка MS Office 2024 (Off)| Оффлайн-установка пакета Office 2024 с флешки        |" -ForegroundColor Gray
+    Write-Host "  | [7] WPI / MInstAll (Offline)      | Запуск оффлайн-сборника программ с вашей флешки      |" -ForegroundColor Gray
+    Write-Host "  | [8] Активатор AAct / KMS (Offline)| Локальная оффлайн-активация без интернета            |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
@@ -68,20 +69,24 @@ function Main-Menu {
     Write-Host "  | [1] HTML-отчет о батарее          | Анализ износа аккумулятора и емкости ноутбука        |" -ForegroundColor Gray
     Write-Host "  | [2] Показать пароли Wi-Fi         | Вывод всех сохраненных паролей от сетей на этом ПК   |" -ForegroundColor Gray
     Write-Host "  | [3] Проверка дампов BSOD          | Поиск логов синих экранов в C:\Windows\Minidump      |" -ForegroundColor Gray
-    Write-Host "  | [4] Стресс-тесты железа           | Запуск AIDA64, FurMark, OCCT для проверки стабильности|" -ForegroundColor Gray
-    Write-Host "  | [5] CrystalDiskInfo               | Оценка здоровья, SMART и температуры SSD/HDD         |" -ForegroundColor Gray
-    Write-Host "  | [6] Snappy Driver Installer (SDI) | Оффлайн-поиск и установка драйверов на любое железо  |" -ForegroundColor Gray
+    Write-Host "  | [4] Victoria 5.37 (HDD/SSD)       | Глубокий тест поверхности и проверка SMART диска     |" -ForegroundColor Gray
+    Write-Host "  | [5] CrystalDiskInfo               | Быстрая оценка здоровья и температуры SSD/HDD        |" -ForegroundColor Gray
+    Write-Host "  | [6] Стресс-тесты железа           | Запуск AIDA64, FurMark, OCCT для проверки ПК         |" -ForegroundColor Gray
+    Write-Host "  | [7] Snappy Driver Installer (SDI) | Оффлайн-поиск и установка драйверов на любое железо  |" -ForegroundColor Gray
+    Write-Host "  | [8] Autoruns & Process Explorer   | Глубокий аудит автозагрузки и скрытых процессов      |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
     # Блок 3
     Write-Host "  [ 3 ] ОЧИСТКА И ЛЕЧЕНИЕ" -ForegroundColor Magenta
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
-    Write-Host "  | [1] Очистка Temp и кэша           | Удаление временных файлов, логов и кэша обновлений   |" -ForegroundColor Gray
-    Write-Host "  | [2] Сжатие папки WinSxS           | Очистка старых компонентов и высвобождение места     |" -ForegroundColor Gray
-    Write-Host "  | [3] Удаление DDU (Видеодрайвер)   | Чистое удаление видеодрайверов NVIDIA/AMD/Intel      |" -ForegroundColor Gray
-    Write-Host "  | [4] Сканер AdwCleaner             | Удаление рекламных вирусов, тулбаров и всплывашек    |" -ForegroundColor Gray
-    Write-Host "  | [5] Антивирус KVRT                | Экспресс-лечение троянов, майнеров и шифровальщиков  |" -ForegroundColor Gray
+    Write-Host "  | [1] Dism++ GUI комбайн            | Очистка системы, удаление мусора и бэкап Windows     |" -ForegroundColor Gray
+    Write-Host "  | [2] Geek Uninstaller              | Чистое удаление программ с подчисткой хвостов        |" -ForegroundColor Gray
+    Write-Host "  | [3] Очистка Temp и кэша           | Удаление временных файлов, логов и кэша обновлений   |" -ForegroundColor Gray
+    Write-Host "  | [4] Сжатие папки WinSxS           | Очистка старых компонентов и высвобождение места     |" -ForegroundColor Gray
+    Write-Host "  | [5] Удаление DDU (Видеодрайвер)   | Чистое удаление видеодрайверов NVIDIA/AMD/Intel      |" -ForegroundColor Gray
+    Write-Host "  | [6] Сканер AdwCleaner (Smart)     | Удаление рекламы и вирусов (Локально / Онлайн)       |" -ForegroundColor Gray
+    Write-Host "  | [7] Антивирус KVRT                | Экспресс-лечение троянов, майнеров и шифровальщиков  |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
@@ -90,23 +95,27 @@ function Main-Menu {
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host "  | [1] Сброс сети и DNS кэша         | Восстановление сетевого стека TCP/IP и Winsock       |" -ForegroundColor Gray
     Write-Host "  | [2] Скачать Zapret (YouTube/DS)   | Обход замедления YouTube и Discord с GitHub          |" -ForegroundColor Gray
-    Write-Host "  | [3] Синхронизация времени         | Фикс ошибок SSL-сертификатов при севшей батарейке BIOS|" -ForegroundColor Gray
-    Write-Host "  | [4] Cloudflare DNS (1.1.1.1)      | Быстрый приватный DNS-сервер 1.1.1.1 / 1.0.0.1       |" -ForegroundColor Gray
-    Write-Host "  | [5] Google DNS (8.8.8.8)          | Надежный DNS-сервер 8.8.8.8 / 8.8.4.4                |" -ForegroundColor Gray
-    Write-Host "  | [6] Сброс DNS на DHCP (Авто)      | Возврат автоматического получения DNS от роутера     |" -ForegroundColor Gray
+    Write-Host "  | [3] DNS Jumper 2.3 (Portable)     | Тест скорости и выбор самого быстрого DNS в 1 клик   |" -ForegroundColor Gray
+    Write-Host "  | [4] Синхронизация времени         | Фикс ошибок SSL-сертификатов при севшей батарейке    |" -ForegroundColor Gray
+    Write-Host "  | [5] Cloudflare DNS (1.1.1.1)      | Быстрый приватный DNS-сервер 1.1.1.1 / 1.0.0.1       |" -ForegroundColor Gray
+    Write-Host "  | [6] Google DNS (8.8.8.8)          | Надежный DNS-сервер 8.8.8.8 / 8.8.4.4                |" -ForegroundColor Gray
+    Write-Host "  | [7] Сброс DNS на DHCP (Авто)      | Возврат автоматического получения DNS от роутера     |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
     # Блок 5
-    Write-Host "  [ 5 ] СИСТЕМНЫЕ ФИКСЫ И ВОССТАНОВЛЕНИЕ" -ForegroundColor White
+    Write-Host "  [ 5 ] СИСТЕМНЫЕ ФИКСЫ И ТВЕРДЫЕ ТВЕЙКИ" -ForegroundColor White
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
-    Write-Host "  | [1] Проверка SFC + DISM           | Поиск и авто-восстановление поврежденных файлов Win  |" -ForegroundColor Gray
-    Write-Host "  | [2] Сброс очереди принтера        | Очистка зависших документов, когда печать встала     |" -ForegroundColor Gray
-    Write-Host "  | [3] Фикс ассоциаций (.exe / .lnk) | Восстановление открытия программ и ярлыков           |" -ForegroundColor Gray
-    Write-Host "  | [4] Меню Windows 10 в Win 11      | Включение удобного классического контекстного меню   |" -ForegroundColor Gray
-    Write-Host "  | [5] Вернуть меню Windows 11       | Восстановление нового контекстного меню по дефолту   |" -ForegroundColor Gray
-    Write-Host "  | [6] Включить 'Администратор'      | Активация встроенного скрытого супер-пользователя    |" -ForegroundColor Gray
-    Write-Host "  | [7] Bypass Win11 Check            | Обход требований TPM 2.0 / SecureBoot в реестре      |" -ForegroundColor Gray
+    Write-Host "  | [1] Defender Control (Sordum)     | Включение / отключение Защитника Windows в 1 клик    |" -ForegroundColor Gray
+    Write-Host "  | [2] Windows Update Blocker (WUB)  | Отключение авто-обновлений Windows для слабых ПК     |" -ForegroundColor Gray
+    Write-Host "  | [3] O&O ShutUp10++ (OOSU10)       | Отключение слежки, телеметрии и фоновых служб        |" -ForegroundColor Gray
+    Write-Host "  | [4] Проверка SFC + DISM           | Поиск и авто-восстановление поврежденных файлов Win  |" -ForegroundColor Gray
+    Write-Host "  | [5] Сброс очереди принтера        | Очистка зависших документов, когда печать встала     |" -ForegroundColor Gray
+    Write-Host "  | [6] Фикс ассоциаций (.exe / .lnk) | Восстановление открытия программ и ярлыков           |" -ForegroundColor Gray
+    Write-Host "  | [7] Меню Windows 10 в Win 11      | Включение удобного классического контекстного меню   |" -ForegroundColor Gray
+    Write-Host "  | [8] Вернуть меню Windows 11       | Восстановление нового контекстного меню по дефолту   |" -ForegroundColor Gray
+    Write-Host "  | [9] Включить 'Администратор'      | Активация встроенного скрытого супер-пользователя    |" -ForegroundColor Gray
+    Write-Host "  | [10] Bypass Win11 Check           | Обход требований TPM 2.0 / SecureBoot в реестре      |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
@@ -140,8 +149,9 @@ function SubMenu-Soft {
     Write-Host "  [3] Win11Debloat - Быстрая чистка Windows 11 от мусора (Online)"
     Write-Host "  [4] Базовый набор в 1 клик (Chrome, 7-Zip, VLC, Telegram, Notepad++)"
     Write-Host "  [5] Установить UniGetUI (Графический менеджер программ)"
-    Write-Host "  [6] Запустить локальный WPI / MInstAll с флешки (Offline)"
-    Write-Host "  [7] Запустить оффлайн-активатор (AAct / KMS с флешки)"
+    Write-Host "  [6] Установить Microsoft Office 2024 (Оффлайн-установка с флешки)"
+    Write-Host "  [7] Запустить локальный WPI / MInstAll с флешки (Offline)"
+    Write-Host "  [8] Запустить оффлайн-активатор (AAct / KMS с флешки)"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
@@ -160,11 +170,15 @@ function SubMenu-Soft {
             Pause
         }
         "5" { winget install --id MartiCliment.UniGetUI --silent --accept-package-agreements; Pause }
-        "6" { 
+        "6" {
+            $off2024 = Join-Path $DriveRoot "Programs\Microsoft Office\Office2024-x64.exe"
+            if (Test-Path $off2024) { Start-Process $off2024 } else { Start-Process (Join-Path $DriveRoot "Programs\Microsoft Office") }
+        }
+        "7" { 
             $p = Join-Path $DriveRoot "Programs\MInst.exe"
             if (Test-Path $p) { Start-Process $p } else { Start-Process (Join-Path $DriveRoot "Programs") }
         }
-        "7" { 
+        "8" { 
             $p = Join-Path $DriveRoot "Programs\Activators\aact.exe"
             if (Test-Path $p) { Start-Process $p } else { Start-Process (Join-Path $DriveRoot "Programs\Activators") }
         }
@@ -178,9 +192,11 @@ function SubMenu-Diag {
     Write-Host "  [1] Сгенерировать HTML-отчет о батарее ноутбука (Износ аккумулятора)"
     Write-Host "  [2] Показать все сохраненные пароли Wi-Fi на этом ПК"
     Write-Host "  [3] Проверить синие экраны (Minidump / BSOD)"
-    Write-Host "  [4] Запустить стресс-тесты (Папка Diagnostic: AIDA64, FurMark, OCCT)"
+    Write-Host "  [4] Victoria 5.37 (Тест поверхности HDD/SSD и SMART)"
     Write-Host "  [5] Запуск CrystalDiskInfo (Здоровье SSD/HDD)"
-    Write-Host "  [6] Запуск Snappy Driver Installer (Установка драйверов)"
+    Write-Host "  [6] Запустить стресс-тесты (Папка Diagnostic: AIDA64, FurMark, OCCT)"
+    Write-Host "  [7] Запуск Snappy Driver Installer (Установка драйверов)"
+    Write-Host "  [8] Открыть Sysinternals (Autoruns 14.30 и Process Explorer 17.12)"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
@@ -214,14 +230,26 @@ function SubMenu-Diag {
             }
             Pause
         }
-        "4" { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
+        "4" {
+            $vic = Join-Path $DriveRoot "Programs\Portable\Victoria-5.37.exe"
+            if (Test-Path $vic) { Start-Process $vic } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
         "5" { 
-            $cdi = Join-Path $DriveRoot "Programs\First Install\CrystalDiskInfo9_6_3.exe"
+            $cdi = Join-Path $DriveRoot "Programs\Diagnostic\CrystalDiskInfo9_6_3.exe"
+            if (-not (Test-Path $cdi)) { $cdi = Join-Path $DriveRoot "Programs\First Install\CrystalDiskInfo9_6_3.exe" }
             if (Test-Path $cdi) { Start-Process $cdi } else { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
         }
-        "6" { 
+        "6" { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
+        "7" { 
             $sdi = Join-Path $DriveRoot "Programs\SDI\SDI_x64_R.exe"
             if (Test-Path $sdi) { Start-Process $sdi } else { Write-Host "[-] Папка SDI не найдена на флешке" -ForegroundColor Red; Pause }
+        }
+        "8" {
+            $ar = Join-Path $DriveRoot "Programs\Portable\Autoruns-14.30.exe"
+            $pe = Join-Path $DriveRoot "Programs\Portable\Process.Explorer-17.12.exe"
+            if (Test-Path $ar) { Start-Process $ar }
+            if (Test-Path $pe) { Start-Process $pe }
+            if (-not (Test-Path $ar) -and -not (Test-Path $pe)) { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
         }
     }
 }
@@ -230,37 +258,54 @@ function SubMenu-Diag {
 function SubMenu-Clean {
     Show-Header
     Write-Host "`n--- [ ОЧИСТКА И УДАЛЕНИЕ ] ---" -ForegroundColor Magenta
-    Write-Host "  [1] Полная очистка Temp, кэша Windows Update и Prefetch"
-    Write-Host "  [2] Сжатие и глубокая очистка папки WinSxS (DISM ComponentCleanup)"
-    Write-Host "  [3] Удаление видеодрайверов под ноль (Запуск DDU)"
-    Write-Host "  [4] Скачать и запустить AdwCleaner (Удаление рекламы и вирусов из браузеров)"
-    Write-Host "  [5] Скачать и запустить KVRT (Kaspersky Virus Removal Tool)"
+    Write-Host "  [1] Dism++ GUI комбайн (Очистка системы, бэкап, драйверы)"
+    Write-Host "  [2] Geek Uninstaller (Быстрое удаление программ с подчисткой)"
+    Write-Host "  [3] Полная очистка Temp, кэша Windows Update и Prefetch"
+    Write-Host "  [4] Сжатие и глубокая очистка папки WinSxS (DISM ComponentCleanup)"
+    Write-Host "  [5] Удаление видеодрайверов под ноль (Запуск DDU)"
+    Write-Host "  [6] Сканер AdwCleaner (Локально с флешки или онлайн с GitHub)"
+    Write-Host "  [7] Скачать и запустить KVRT (Kaspersky Virus Removal Tool)"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
         "1" {
+            $dismp = Join-Path $DriveRoot "Programs\Portable\Dism++10.1.1002.1B.exe"
+            if (Test-Path $dismp) { Start-Process $dismp } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "2" {
+            $geek = Join-Path $DriveRoot "Programs\Portable\geek-1.5.3.170.exe"
+            if (Test-Path $geek) { Start-Process $geek } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "3" {
             Write-Host "`n[+] Очистка временных файлов..." -ForegroundColor Yellow
             Remove-Item ($env:TEMP + "\*") -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
             Write-Host "[OK] Готово!" -ForegroundColor Green; Pause
         }
-        "2" {
+        "4" {
             Write-Host "`n[+] Очистка и сжатие WinSxS..." -ForegroundColor Yellow
             dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
             Write-Host "[OK] Хранилище компонентов очищено!" -ForegroundColor Green; Pause
         }
-        "3" {
-            $ddu = Join-Path $DriveRoot "Programs\Diagnostic\DDU\Display Driver Uninstaller.exe"
-            if (Test-Path $ddu) { Start-Process $ddu } else { Write-Host "[-] Положите DDU в Programs\Diagnostic\DDU" -ForegroundColor Red; Pause }
-        }
-        "4" {
-            Write-Host "`n[+] Скачивание свежего AdwCleaner..." -ForegroundColor Cyan
-            $adwPath = $env:TEMP + "\adwcleaner.exe"
-            Invoke-WebRequest -Uri "https://downloads.malwarebytes.com/file/adwcleaner" -OutFile $adwPath
-            Start-Process $adwPath; Pause
-        }
         "5" {
+            $ddu = Join-Path $DriveRoot "Programs\Diagnostic\DDU\Display Driver Uninstaller.exe"
+            if (Test-Path $ddu) { Start-Process $ddu } else { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
+        }
+        "6" {
+            $localAdw = Join-Path $DriveRoot "Programs\Portable\adwcleaner-8.8.1.exe"
+            if (Test-Path $localAdw) {
+                Write-Host "`n[+] Запуск локальной версии AdwCleaner 8.8.1 с флешки..." -ForegroundColor Cyan
+                Start-Process $localAdw
+            } else {
+                Write-Host "`n[+] Скачивание свежего AdwCleaner с официального сервера..." -ForegroundColor Cyan
+                $adwPath = $env:TEMP + "\adwcleaner.exe"
+                Invoke-WebRequest -Uri "https://downloads.malwarebytes.com/file/adwcleaner" -OutFile $adwPath
+                Start-Process $adwPath
+            }
+            Pause
+        }
+        "7" {
             Write-Host "`n[+] Скачивание антивирусного сканера KVRT..." -ForegroundColor Cyan
             $kvrtPath = $env:TEMP + "\KVRT.exe"
             Invoke-WebRequest -Uri "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe" -OutFile $kvrtPath
@@ -275,10 +320,11 @@ function SubMenu-Network {
     Write-Host "`n--- [ СЕТЬ И ИНТЕРНЕТ ] ---" -ForegroundColor Cyan
     Write-Host "  [1] Полный сброс стека TCP/IP, Winsock и очистка кэша DNS"
     Write-Host "  [2] Скачать и распаковать свежий Zapret (Обход блокировок YouTube/Discord)"
-    Write-Host "  [3] Принудительная синхронизация точного времени (Fix SSL / Time Sync)"
-    Write-Host "  [4] Установить быстрый и безопасный DNS Cloudflare (1.1.1.1 / 1.0.0.1)"
-    Write-Host "  [5] Установить Google DNS (8.8.8.8 / 8.8.4.4)"
-    Write-Host "  [6] Вернуть автоматическое получение DNS (по DHCP от роутера)"
+    Write-Host "  [3] Запуск DNS Jumper 2.3 (Тест скорости и переключение DNS)"
+    Write-Host "  [4] Принудительная синхронизация точного времени (Fix SSL / Time Sync)"
+    Write-Host "  [5] Установить быстрый и безопасный DNS Cloudflare (1.1.1.1 / 1.0.0.1)"
+    Write-Host "  [6] Установить Google DNS (8.8.8.8 / 8.8.4.4)"
+    Write-Host "  [7] Вернуть автоматическое получение DNS (по DHCP от роутера)"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
@@ -307,6 +353,10 @@ function SubMenu-Network {
             Pause
         }
         "3" {
+            $dnsj = Join-Path $DriveRoot "Programs\Portable\DNS.Jumper-2.3.exe"
+            if (Test-Path $dnsj) { Start-Process $dnsj } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "4" {
             Write-Host "`n[+] Запуск службы времени и принудительная синхронизация с серверами NTP..." -ForegroundColor Cyan
             Start-Service w32time -ErrorAction SilentlyContinue
             w32tm /config /syncfromflags:manual /manualpeerlist:"time.windows.com,pool.ntp.org" /update | Out-Null
@@ -314,15 +364,15 @@ function SubMenu-Network {
             Write-Host "`n[OK] Системное время синхронизировано! Ошибки сертификатов исправлены." -ForegroundColor Green
             Pause
         }
-        "4" {
+        "5" {
             Get-NetAdapter | Where-Object Status -eq "Up" | Set-DnsClientServerAddress -ServerAddresses ("1.1.1.1","1.0.0.1")
             Write-Host "`n[OK] Установлен Cloudflare DNS (1.1.1.1)" -ForegroundColor Green; Pause
         }
-        "5" {
+        "6" {
             Get-NetAdapter | Where-Object Status -eq "Up" | Set-DnsClientServerAddress -ServerAddresses ("8.8.8.8","8.8.4.4")
             Write-Host "`n[OK] Установлен Google DNS (8.8.8.8)" -ForegroundColor Green; Pause
         }
-        "6" {
+        "7" {
             Get-NetAdapter | Where-Object Status -eq "Up" | Set-DnsClientServerAddress -ResetServerAddresses
             Write-Host "`n[OK] DNS сброшен на авто (DHCP)" -ForegroundColor Green; Pause
         }
@@ -332,25 +382,40 @@ function SubMenu-Network {
 # --- ПОДМЕНЮ 5: СИСТЕМНЫЕ ФИКСЫ ---
 function SubMenu-Fixes {
     Show-Header
-    Write-Host "`n--- [ СИСТЕМНЫЕ ФИКСЫ И ВОССТАНОВЛЕНИЕ ] ---" -ForegroundColor White
-    Write-Host "  [1] Проверка и восстановление системных файлов (SFC /SCANNOW + DISM)"
-    Write-Host "  [2] Сброс зависшей очереди печати принтера (Print Spooler Reset)"
-    Write-Host "  [3] Восстановление ассоциаций файлов (.exe / .lnk / .bat)"
-    Write-Host "  [4] Включить классическое контекстное меню Windows 10 (для Windows 11)"
-    Write-Host "  [5] Вернуть новое контекстное меню Windows 11 по умолчанию"
-    Write-Host "  [6] Активировать встроенную учетную запись Администратор"
-    Write-Host "  [7] Применить реестровый обход проверки TPM 2.0 / SecureBoot при установке"
+    Write-Host "`n--- [ СИСТЕМНЫЕ ФИКСЫ И ТВЕРДЫЕ ТВЕЙКИ ] ---" -ForegroundColor White
+    Write-Host "  [1] Defender Control (Включение / отключение Защитника Windows в 1 клик)"
+    Write-Host "  [2] Windows Update Blocker (Полное отключение обновлений Windows)"
+    Write-Host "  [3] O&O ShutUp10++ (Тонкая настройка приватности и отключение телеметрии)"
+    Write-Host "  [4] Проверка и восстановление системных файлов (SFC /SCANNOW + DISM)"
+    Write-Host "  [5] Сброс зависшей очереди печати принтера (Print Spooler Reset)"
+    Write-Host "  [6] Восстановление ассоциаций файлов (.exe / .lnk / .bat)"
+    Write-Host "  [7] Включить классическое контекстное меню Windows 10 (для Windows 11)"
+    Write-Host "  [8] Вернуть новое контекстное меню Windows 11 по умолчанию"
+    Write-Host "  [9] Активировать встроенную учетную запись Администратор"
+    Write-Host "  [10] Применить реестровый обход проверки TPM 2.0 / SecureBoot при установке"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
         "1" {
+            $defctrl = Join-Path $DriveRoot "Programs\Portable\DefenderControl-2.1.exe"
+            if (Test-Path $defctrl) { Start-Process $defctrl } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "2" {
+            $wub = Join-Path $DriveRoot "Programs\Portable\Windows.Update.Blocker-1.8.exe"
+            if (Test-Path $wub) { Start-Process $wub } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "3" {
+            $oosu = Join-Path $DriveRoot "Programs\Portable\OOSU10-3.2.1111.exe"
+            if (Test-Path $oosu) { Start-Process $oosu } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
+        }
+        "4" {
             Write-Host "`n[+] Запуск SFC и DISM..." -ForegroundColor Yellow
             sfc /scannow
             dism /online /cleanup-image /restorehealth
             Write-Host "[OK] Проверка завершена!" -ForegroundColor Green; Pause
         }
-        "2" {
+        "5" {
             Write-Host "`n[+] Остановка службы диспетчера печати и очистка очереди..." -ForegroundColor Cyan
             Stop-Service spooler -Force -ErrorAction SilentlyContinue
             Remove-Item "$env:SystemRoot\System32\spool\PRINTERS\*" -Force -Recurse -ErrorAction SilentlyContinue
@@ -358,7 +423,7 @@ function SubMenu-Fixes {
             Write-Host "`n[OK] Очередь печати очищена! Принтер разблокирован." -ForegroundColor Green
             Pause
         }
-        "3" {
+        "6" {
             Write-Host "`n[+] Восстановление стандартных ассоциаций исполняемых файлов в реестре..." -ForegroundColor Cyan
             reg add "HKCR\.exe" /ve /t REG_SZ /d "exefile" /f | Out-Null
             reg add "HKCR\exefile\shell\open\command" /ve /t REG_SZ /d '\"%1\" %*' /f | Out-Null
@@ -367,21 +432,21 @@ function SubMenu-Fixes {
             Write-Host "`n[OK] Ассоциации .exe и .lnk восстановлены!" -ForegroundColor Green
             Pause
         }
-        "4" {
+        "7" {
             reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve | Out-Null
             Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
             Write-Host "`n[OK] Классическое меню включено!" -ForegroundColor Green; Pause
         }
-        "5" {
+        "8" {
             reg delete "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" /f 2>$null | Out-Null
             Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
             Write-Host "`n[OK] Меню Windows 11 восстановлено!" -ForegroundColor Green; Pause
         }
-        "6" {
+        "9" {
             net user Administrator /active:yes
             Write-Host "`n[OK] Пользователь Администратор активирован!" -ForegroundColor Green; Pause
         }
-        "7" {
+        "10" {
             reg add "HKLM\SYSTEM\Setup\LabConfig" /v "BypassTPMCheck" /t REG_DWORD /d 1 /f | Out-Null
             reg add "HKLM\SYSTEM\Setup\LabConfig" /v "BypassSecureBootCheck" /t REG_DWORD /d 1 /f | Out-Null
             reg add "HKLM\SYSTEM\Setup\LabConfig" /v "BypassRAMCheck" /t REG_DWORD /d 1 /f | Out-Null
@@ -429,7 +494,8 @@ function SubMenu-Win7 {
         }
         "2" {
             $vcredist = Join-Path $DriveRoot "Programs\First Install\VisualCppRedist_AIO.exe"
-            if (Test-Path $vcredist) { Start-Process $vcredist } else { Start-Process (Join-Path $DriveRoot "Programs") }
+            if (-not (Test-Path $vcredist)) { $vcredist = Join-Path $DriveRoot "Programs\System\RuntimePack_Lite-20.3.3.exe" }
+            if (Test-Path $vcredist) { Start-Process $vcredist } else { Start-Process (Join-Path $DriveRoot "Programs\System") }
         }
     }
 }
