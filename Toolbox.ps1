@@ -2,7 +2,7 @@
 # ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11) - СУПЕР-АДМИНИСТРАТОР
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN v1.3]"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN v1.4]"
 $DriveRoot = $PSScriptRoot
 
 # 1. ПРОВЕРКА И САМО-ЭЛЕВАЦИЯ ДО АДМИНИСТРАТОРА (при прямом запуске .ps1)
@@ -205,7 +205,6 @@ function Invoke-SystemDoctor {
                 }
             }
         }
-        # Проверка логов нехватки памяти (Event ID 2004) за последние 7 дней
         $since = (Get-Date).AddDays(-7)
         $memEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=2004; StartTime=$since} -ErrorAction SilentlyContinue
         if ($memEvents) {
@@ -231,7 +230,6 @@ function Invoke-SystemDoctor {
     $crashIssue = $false
     try {
         $since30 = (Get-Date).AddDays(-30)
-        # 1. WHEA ошибки процессора и чипсета
         $wheaEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'; StartTime=$since30} -ErrorAction SilentlyContinue
         if ($wheaEvents) {
             $crashIssue = $true
@@ -242,7 +240,6 @@ function Invoke-SystemDoctor {
                 Solution = "Проверьте температуры и стабильность под нагрузкой через меню [2]->[6] (OCCT / AIDA64). Сбросьте разгон в BIOS [6]."
             }
         }
-        # 2. Внезапные отключения (Kernel-Power Event 41)
         $kpEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=41; StartTime=$since30} -ErrorAction SilentlyContinue
         if ($kpEvents -and $kpEvents.Count -ge 3) {
             $crashIssue = $true
@@ -253,11 +250,9 @@ function Invoke-SystemDoctor {
                 Solution = "Возможен сбой блока питания (БП), скачки напряжения в розетке или перегрев. Проверьте кабели питания."
             }
         }
-        # 3. Дампы BSOD в папке Minidump
         $dumps = Get-ChildItem "C:\Windows\Minidump" -ErrorAction SilentlyContinue
         if ($dumps -and $dumps.Count -gt 0) {
             $crashIssue = $true
-            # Проверяем последний BSOD Event 1001
             $bsodEvent = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1001; StartTime=$since30} -MaxEvents 1 -ErrorAction SilentlyContinue
             $bsodDesc = "В системе зафиксированы аварийные синие экраны (найдено $($dumps.Count) дампов)."
             $bsodSol = "Удалите старый видеодрайвер под ноль через [3]->[5] (DDU) и установите свежий. Проверьте память."
@@ -340,7 +335,6 @@ function Invoke-SystemDoctor {
     Write-Host " [6/6] Проверка сети, роутера и резолвинга DNS..." -NoNewline
     $netIssue = $false
     try {
-        # Пинг роутера (шлюза)
         $route = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
         $gw = $route.NextHop
         $gwOk = $false
@@ -420,10 +414,212 @@ function Invoke-SystemDoctor {
     Pause
 }
 
+# =========================================================================
+# МОДУЛЬ: ДИАГНОСТИКА ВЕБ-КАМЕРЫ И МИКРОФОНА («ДОКТОР МЕДИА»)
+# =========================================================================
+function Invoke-WebcamMicDoctor {
+    Clear-Host
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host "                 🎥 ДИАГНОСТИКА ВЕБ-КАМЕРЫ И МИКРОФОНА (ДОКТОР МЕДИА)                         " -ForegroundColor Yellow
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host " Проверка физических устройств, драйверов, кодов ошибок и политик приватности Windows...`n" -ForegroundColor DarkGray
+
+    # 1. ПОИСК ВЕБ-КАМЕР
+    Write-Host "--- 1. ВЕБ-КАМЕРА (ВИДЕО) ---" -ForegroundColor Cyan
+    $cameras = Get-PnpDevice -Class "Camera", "Image" -PresentOnly -ErrorAction SilentlyContinue
+    if (-not $cameras) {
+        $cameras = Get-PnpDevice | Where-Object { $_.FriendlyName -match "camera|webcam|видеокамера|камера" } -ErrorAction SilentlyContinue
+    }
+
+    if ($cameras) {
+        foreach ($cam in $cameras) {
+            Write-Host "  [+] Устройство: " -NoNewline -ForegroundColor White
+            Write-Host $cam.FriendlyName -ForegroundColor Yellow
+            Write-Host "      • Статус: " -NoNewline -ForegroundColor Gray
+            if ($cam.Status -eq "OK") {
+                Write-Host "Работает нормально (Статус OK)" -ForegroundColor Green
+            } else {
+                Write-Host ("Ошибка устройства: " + $cam.Status) -ForegroundColor Red
+                if ($cam.Problem -eq 22) {
+                    Write-Host "      • Диагноз: Устройство ОТКЛЮЧЕНО в диспетчере или клавишей Fn на клавиатуре!" -ForegroundColor Red
+                } elseif ($cam.Problem -eq 28) {
+                    Write-Host "      • Диагноз: ДРАЙВЕР НЕ УСТАНОВЛЕН (Код 28). Требуется установка через SDI [2]->[7]." -ForegroundColor Red
+                } elseif ($cam.Problem -eq 10 -or $cam.Problem -eq 43) {
+                    Write-Host "      • Диагноз: Сбой инициализации железа (Код $($cam.Problem)). Возможно отошел шлейф или сбой контроллера." -ForegroundColor Red
+                }
+            }
+        }
+    } else {
+        Write-Host "  [-] Камера НЕ ОБНАРУЖЕНА в системе!" -ForegroundColor Red
+        Write-Host "      • Диагноз простыми словами:" -ForegroundColor White
+        Write-Host "        1. На ноутбуках Asus часто нажата комбинация Fn + F10 (отключает камеру физически)." -ForegroundColor Gray
+        Write-Host "        2. На Lenovo часто включен режим приватности в Lenovo Vantage." -ForegroundColor Gray
+        Write-Host "        3. На HP/MSI проверьте механическую шторку со свитчем или боковой переключатель." -ForegroundColor Gray
+        Write-Host "        4. Если это старый ноутбук — возможен перетертый шлейф матрицы в петле экрана." -ForegroundColor Gray
+    }
+
+    # Проверка политики конфиденциальности камеры
+    $camPrivDeny = $false
+    try {
+        $camVal1 = (Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name "Value" -ErrorAction SilentlyContinue).Value
+        $camVal2 = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name "Value" -ErrorAction SilentlyContinue).Value
+        if ($camVal1 -eq "Deny" -or $camVal2 -eq "Deny") {
+            $camPrivDeny = $true
+        }
+    } catch {}
+
+    Write-Host "`n  [i] Доступ приложений к веб-камере в Windows: " -NoNewline -ForegroundColor Gray
+    if ($camPrivDeny) {
+        Write-Host "ЗАБЛОКИРОВАН В ПРИВАТНОСТИ (Deny)" -ForegroundColor Red
+        Write-Host "      --> Приложения (Zoom, Telegram, Браузер) будут показывать черный экран или ошибку 0xA00F4244!" -ForegroundColor Yellow
+        Write-Host "      --> Решение: Нажмите в меню [5]->[11] для автоматической разблокировки!" -ForegroundColor Green
+    } else {
+        Write-Host "РАЗРЕШЕН (Allow)" -ForegroundColor Green
+    }
+
+    Write-Host ""
+
+    # 2. ПОИСК МИКРОФОНОВ
+    Write-Host "--- 2. МИКРОФОН (АУДИО-ВХОД) ---" -ForegroundColor Cyan
+    $mics = Get-PnpDevice -Class "AudioEndpoint" -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.FriendlyName -match "микрофон|mic|microphone" }
+    if (-not $mics) {
+        $mics = Get-PnpDevice -Class "MEDIA" -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.FriendlyName -match "Audio|Звук|Realtek|High Definition" }
+    }
+
+    if ($mics) {
+        foreach ($m in $mics) {
+            Write-Host "  [+] Устройство: " -NoNewline -ForegroundColor White
+            Write-Host $m.FriendlyName -ForegroundColor Yellow
+            Write-Host "      • Статус: " -NoNewline -ForegroundColor Gray
+            if ($m.Status -eq "OK") {
+                Write-Host "Готов к работе (Статус OK)" -ForegroundColor Green
+            } else {
+                Write-Host ("Ошибка: " + $m.Status + " (Код проблемы: " + $m.Problem + ")") -ForegroundColor Red
+            }
+        }
+    } else {
+        Write-Host "  [-] Микрофоны не обнаружены или не настроены конечные точки звука!" -ForegroundColor Red
+    }
+
+    # Проверка аудиослужб
+    $audioSrv = Get-Service "Audiosrv" -ErrorAction SilentlyContinue
+    $audioEnd = Get-Service "AudioEndpointBuilder" -ErrorAction SilentlyContinue
+    Write-Host "`n  [i] Служба звука Windows (Audiosrv): " -NoNewline -ForegroundColor Gray
+    if ($audioSrv.Status -eq "Running") {
+        Write-Host "Работает" -ForegroundColor Green
+    } else {
+        Write-Host "ОСТАНОВЛЕНА (Звук и микрофон работать не будут!)" -ForegroundColor Red
+    }
+
+    # Проверка политики конфиденциальности микрофона
+    $micPrivDeny = $false
+    try {
+        $micVal1 = (Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name "Value" -ErrorAction SilentlyContinue).Value
+        $micVal2 = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name "Value" -ErrorAction SilentlyContinue).Value
+        if ($micVal1 -eq "Deny" -or $micVal2 -eq "Deny") {
+            $micPrivDeny = $true
+        }
+    } catch {}
+
+    Write-Host "  [i] Доступ приложений к микрофону в Windows: " -NoNewline -ForegroundColor Gray
+    if ($micPrivDeny) {
+        Write-Host "ЗАБЛОКИРОВАН В ПРИВАТНОСТИ (Deny)" -ForegroundColor Red
+        Write-Host "      --> Собеседники вас не слышат, хотя микрофон исправен физически!" -ForegroundColor Yellow
+        Write-Host "      --> Решение: Нажмите в меню [5]->[11] для автоматической разблокировки!" -ForegroundColor Green
+    } else {
+        Write-Host "РАЗРЕШЕН (Allow)" -ForegroundColor Green
+    }
+
+    Write-Host "`n==============================================================================================" -ForegroundColor Cyan
+    Write-Host "  [1] Запустить встроенный экспресс-тест камеры (WebCam.exe с флешки)" -ForegroundColor White
+    Write-Host "  [2] Применить АВТО-ФИКС всех блокировок камеры и микрофона прямо сейчас" -ForegroundColor Green
+    Write-Host "  [0] Вернуться в меню" -ForegroundColor DarkGray
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+
+    $act = Read-Host "Выберите действие"
+    if ($act -eq "1") {
+        $camTool = Join-Path $DriveRoot "Programs\Portable\CHDevice\WebCam.exe"
+        if (Test-Path $camTool) {
+            Start-Process $camTool
+        } else {
+            Start-Process "microsoft.windows.camera:"
+        }
+    } elseif ($act -eq "2") {
+        Invoke-WebcamMicFix
+    }
+}
+
+# =========================================================================
+# МОДУЛЬ: АВТО-ФИКС ПРОБЛЕМ ВЕБ-КАМЕРЫ И МИКРОФОНА
+# =========================================================================
+function Invoke-WebcamMicFix {
+    Clear-Host
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host "                🛠 АВТО-ФИКС: РАЗБЛОКИРОВКА ВЕБ-КАМЕРЫ И МИКРОФОНА В 1 КЛИК                   " -ForegroundColor Yellow
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host " Применение комплексного пакета исправления доступа к медиа-устройствам...`n" -ForegroundColor DarkGray
+
+    # 1. Разблокировка приватности в реестре (Allow для камеры и микрофона)
+    Write-Host " [+] 1. Разблокировка политик конфиденциальности в реестре..." -ForegroundColor Cyan
+    $paths = @(
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone",
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone"
+    )
+    foreach ($p in $paths) {
+        if (-not (Test-Path $p)) { New-Item -Path $p -Force -ErrorAction SilentlyContinue | Out-Null }
+        Set-ItemProperty -Path $p -Name "Value" -Value "Allow" -Force -ErrorAction SilentlyContinue
+    }
+    # Глобальные политики
+    $polPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy"
+    if (-not (Test-Path $polPath)) { New-Item -Path $polPath -Force -ErrorAction SilentlyContinue | Out-Null }
+    Set-ItemProperty -Path $polPath -Name "LetAppsAccessCamera" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $polPath -Name "LetAppsAccessMicrophone" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+    Write-Host "     [OK] Разрешения выданы: Все приложения теперь имеют доступ к камере и микрофону!" -ForegroundColor Green
+
+    # 2. Включение отключенных устройств в диспетчере
+    Write-Host " [+] 2. Принудительное включение отключенных PnP-устройств..." -ForegroundColor Cyan
+    Get-PnpDevice -Class "Camera", "Image", "AudioEndpoint" -ErrorAction SilentlyContinue | Where-Object { $_.Status -ne "OK" } | ForEach-Object {
+        try {
+            Enable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Host "     [OK] Включено устройство: $($_.FriendlyName)" -ForegroundColor Green
+        } catch {}
+    }
+
+    # 3. Перезапуск аудио-служб Windows
+    Write-Host " [+] 3. Перезапуск аудио-служб Windows (Audiosrv и AudioEndpointBuilder)..." -ForegroundColor Cyan
+    try {
+        Restart-Service "AudioEndpointBuilder" -Force -ErrorAction SilentlyContinue
+        Restart-Service "Audiosrv" -Force -ErrorAction SilentlyContinue
+        Write-Host "     [OK] Службы звука успешно перезапущены!" -ForegroundColor Green
+    } catch {
+        Write-Host "     [-] Не удалось перезапустить службу звука: $_" -ForegroundColor DarkGray
+    }
+
+    # 4. Шпаргалка по кнопкам ноутбуков
+    Write-Host "`n  💡 ШПАРГАЛКА ПО АППАРАТНЫМ КНОПКАМ НОУТБУКОВ:" -ForegroundColor Yellow
+    Write-Host "  • ASUS:    Нажмите Fn + F10 (включает/выключает камеру физически)" -ForegroundColor White
+    Write-Host "  • LENOVO:  Нажмите Fn + F8 или откройте Lenovo Vantage -> выключите 'Режим конфиденциальности'" -ForegroundColor White
+    Write-Host "  • MSI:     Нажмите Fn + F6 (включает питание веб-камеры)" -ForegroundColor White
+    Write-Host "  • HP:      Проверьте физический переключатель-слайдер на правой или левой грани корпуса" -ForegroundColor White
+    Write-Host "  • ШТОРКА:  Убедитесь, что шторка над экраном сдвинута (не видна красная/оранжевая точка)" -ForegroundColor White
+
+    Write-Host "`n==============================================================================================" -ForegroundColor Cyan
+    Write-Host " [+] Запуск визуальной проверки камеры (открытие WebCam.exe)..." -ForegroundColor Cyan
+    $camTool = Join-Path $DriveRoot "Programs\Portable\CHDevice\WebCam.exe"
+    if (Test-Path $camTool) {
+        Start-Process $camTool
+    } else {
+        Start-Process "microsoft.windows.camera:"
+    }
+    Pause
+}
+
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.3                                 " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.4                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
@@ -458,6 +654,7 @@ function Main-Menu {
     Write-Host "  [ 2 ] ДИАГНОСТИКА ЖЕЛЕЗА И ТЕСТЫ" -ForegroundColor Yellow
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host "  | [0] ДОКТОР ПК (Авто-диагностика)  | Быстрый поиск проблем железа и Windows простыми слов.|" -ForegroundColor White
+    Write-Host "  | [9] ВЕБКА И МИКРОФОН (Диагностика)| Проверка камеры, микрофона, приватности и драйверов  |" -ForegroundColor White
     Write-Host "  | [1] HTML-отчет о батарее          | Анализ износа аккумулятора и емкости ноутбука        |" -ForegroundColor Gray
     Write-Host "  | [2] Показать пароли Wi-Fi         | Вывод всех сохраненных паролей от сетей на этом ПК   |" -ForegroundColor Gray
     Write-Host "  | [3] Проверка дампов BSOD          | Поиск логов синих экранов в C:\Windows\Minidump      |" -ForegroundColor Gray
@@ -508,6 +705,7 @@ function Main-Menu {
     Write-Host "  | [8] Вернуть меню Windows 11       | Восстановление нового контекстного меню по дефолту   |" -ForegroundColor Gray
     Write-Host "  | [9] Включить 'Администратор'      | Активация встроенного скрытого супер-пользователя    |" -ForegroundColor Gray
     Write-Host "  | [10] Bypass Win11 Check           | Обход требований TPM 2.0 / SecureBoot в реестре      |" -ForegroundColor Gray
+    Write-Host "  | [11] Фикс вебки и микрофона       | Снятие блокировок, реестр и службы звука в 1 клик    |" -ForegroundColor Green
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host ""
 
@@ -582,6 +780,7 @@ function SubMenu-Diag {
     Show-Header
     Write-Host "`n--- [ ДИАГНОСТИКА И ТЕСТЫ ] ---" -ForegroundColor Yellow
     Write-Host "  [0] ДОКТОР ПК (Экспресс-диагностика проблем простыми словами)" -ForegroundColor Green
+    Write-Host "  [9] ДИАГНОСТИКА ВЕБ-КАМЕРЫ И МИКРОФОНА (Доктор медиа)" -ForegroundColor Cyan
     Write-Host "  [1] Сгенерировать HTML-отчет о батарее ноутбука (Износ аккумулятора)"
     Write-Host "  [2] Показать все сохраненные пароли Wi-Fi на этом ПК"
     Write-Host "  [3] Проверить синие экраны (Minidump / BSOD)"
@@ -595,6 +794,7 @@ function SubMenu-Diag {
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
         "0" { Invoke-SystemDoctor }
+        "9" { Invoke-WebcamMicDoctor }
         "1" {
             $report = Join-Path $env:USERPROFILE "Desktop\Battery_Report.html"
             powercfg /batteryreport /output $report
@@ -771,6 +971,7 @@ function SubMenu-Fixes {
     Write-Host "  [8] Вернуть новое контекстное меню Windows 11 по умолчанию"
     Write-Host "  [9] Активировать встроенную учетную запись Администратор"
     Write-Host "  [10] Применить реестровый обход проверки TPM 2.0 / SecureBoot при установке"
+    Write-Host "  [11] Авто-фикс веб-камеры и микрофона (Снять блокировки в 1 клик)" -ForegroundColor Green
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
@@ -821,6 +1022,7 @@ function SubMenu-Fixes {
             reg add "HKLM\SYSTEM\Setup\LabConfig" /v "BypassRAMCheck" /t REG_DWORD /d 1 /f | Out-Null
             Write-Host "`n[OK] Ключи обхода требований Windows 11 внесены в реестр!" -ForegroundColor Green; Pause
         }
+        "11" { Invoke-WebcamMicFix }
     }
 }
 

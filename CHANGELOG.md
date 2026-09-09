@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0-beta] - 2026-09-09
+
+### Added
+- Webcam & Microphone Doctor (`Invoke-WebcamMicDoctor`): Audits physical cameras, microphones, PnP driver error codes, and Windows Privacy ConsentStore.
+- 1-Click Media Auto-Fix (`Invoke-WebcamMicFix`): Unblocks webcam & mic access in registry, enables disabled PnP devices, restarts audio services, and opens visual camera test.
+- Vendor Hotkey Cheatsheet: Included key combinations for Asus, Lenovo Vantage, MSI, HP, and Acer privacy switches.
+- Hardware Filter: Enhanced device query with `-PresentOnly` to exclude disconnected phantom Bluetooth devices.
+- Institutional Memory: Added solution record `004-webcam-and-microphone-troubleshooting.md`.
+
 ## [1.3.0-beta] - 2026-09-09
 
 ### Added
