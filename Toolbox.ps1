@@ -2,38 +2,83 @@
 # ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11)
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox v1.0"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox v1.1"
 $DriveRoot = $PSScriptRoot
 
-# Разрешаем TLS 1.2 и TLS 1.3 для старых Windows 7 / 8.1
+# Безопасное включение современных протоколов TLS для старых Windows 7 / 8.1
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-} catch {}
+} catch {
+    Write-Host "[-] Замечание: Не удалось принудительно задать TLS 1.2/1.3: $_" -ForegroundColor DarkGray
+}
 
 # Сбор информации о системе
 $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
-if (-not $os) { $os = Get-WmiObject -Class Win32_OperatingSystem }
-$osName = $os.Caption
+if (-not $os) { $os = Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue }
+$osName = if ($os) { $os.Caption } else { "Windows (Unknown)" }
 $isWin11 = $osName -match "Windows 11"
 $isWin7  = $osName -match "Windows 7"
 
-if ([Environment]::Is64BitOperatingSystem) {
-    $arch = "x64"
-} else {
-    $arch = "x86"
-}
+$arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
 
-# Проверка интернета
+# Проверка сетевой доступности
 $isOnline = $false
 try {
     $ping = Test-Connection -ComputerName 1.1.1.1 -Count 1 -Quiet -ErrorAction SilentlyContinue
     if ($ping) { $isOnline = $true }
-} catch {}
+} catch {
+    $isOnline = $false
+}
+
+# --- ЦЕНТРАЛЬНЫЙ ДИСПЕТЧЕР ЗАПУСКА УТИЛИТ (DRY-ХЕЛПЕР) ---
+function Invoke-Tool {
+    param(
+        [string]$RelativePath,
+        [string]$FallbackRelativePath = "",
+        [string]$FallbackUrl = "",
+        [string]$DownloadName = "",
+        [string]$DisplayName = ""
+    )
+    $primary = Join-Path $DriveRoot $RelativePath
+    if (Test-Path $primary) {
+        Start-Process $primary
+        return
+    }
+    if ($FallbackRelativePath) {
+        $fallback = Join-Path $DriveRoot $FallbackRelativePath
+        if (Test-Path $fallback) {
+            Start-Process $fallback
+            return
+        }
+    }
+    if ($FallbackUrl) {
+        Write-Host "`n[+] Скачивание свежего $DownloadName с официального сервера..." -ForegroundColor Cyan
+        $dlPath = Join-Path $env:TEMP $DownloadName
+        try {
+            Invoke-WebRequest -Uri $FallbackUrl -OutFile $dlPath
+            Start-Process $dlPath
+            Pause
+            return
+        } catch {
+            Write-Host "[-] Ошибка загрузки с сервера: $_" -ForegroundColor Red
+            Pause
+            return
+        }
+    }
+    $parentDir = Split-Path $primary
+    if (Test-Path $parentDir) {
+        Write-Host "[-] Утилита не найдена ($RelativePath). Открываю папку..." -ForegroundColor Yellow
+        Start-Process $parentDir
+    } else {
+        Write-Host "[-] Компонент не найден на флешке: $RelativePath" -ForegroundColor Red
+        Pause
+    }
+}
 
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.0                                 " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.1                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
@@ -156,9 +201,18 @@ function SubMenu-Soft {
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
-        "1" { irm https://get.activated.win | iex; Pause }
-        "2" { irm christitus.com/win | iex; Pause }
-        "3" { irm https://win11debloat.raphire.net | iex; Pause }
+        "1" { 
+            try { irm https://get.activated.win | iex } catch { Write-Host "[-] Ошибка выполнения MAS: $_" -ForegroundColor Red }
+            Pause 
+        }
+        "2" { 
+            try { irm christitus.com/win | iex } catch { Write-Host "[-] Ошибка выполнения WinUtil: $_" -ForegroundColor Red }
+            Pause 
+        }
+        "3" { 
+            try { irm https://win11debloat.raphire.net | iex } catch { Write-Host "[-] Ошибка выполнения Win11Debloat: $_" -ForegroundColor Red }
+            Pause 
+        }
         "4" {
             Write-Host "`n[+] Пакетная установка базовых программ через Winget..." -ForegroundColor Cyan
             $apps = @("Google.Chrome", "7zip.7zip", "VideoLAN.VLC", "Telegram.TelegramDesktop", "Notepad++.Notepad++")
@@ -166,22 +220,13 @@ function SubMenu-Soft {
                 Write-Host " -> Установка $app..." -ForegroundColor Yellow
                 winget install --id $app --silent --accept-package-agreements --accept-source-agreements
             }
-            Write-Host "`n[OK] Все базовые программы успешно установлены!" -ForegroundColor Green
+            Write-Host "`n[OK] Завершено выполнение пакетной установки!" -ForegroundColor Green
             Pause
         }
         "5" { winget install --id MartiCliment.UniGetUI --silent --accept-package-agreements; Pause }
-        "6" {
-            $off2024 = Join-Path $DriveRoot "Programs\Microsoft Office\Office2024-x64.exe"
-            if (Test-Path $off2024) { Start-Process $off2024 } else { Start-Process (Join-Path $DriveRoot "Programs\Microsoft Office") }
-        }
-        "7" { 
-            $p = Join-Path $DriveRoot "Programs\MInst.exe"
-            if (Test-Path $p) { Start-Process $p } else { Start-Process (Join-Path $DriveRoot "Programs") }
-        }
-        "8" { 
-            $p = Join-Path $DriveRoot "Programs\Activators\aact.exe"
-            if (Test-Path $p) { Start-Process $p } else { Start-Process (Join-Path $DriveRoot "Programs\Activators") }
-        }
+        "6" { Invoke-Tool "Programs\Microsoft Office\Office2024-x64.exe" -DisplayName "Office 2024" }
+        "7" { Invoke-Tool "Programs\MInst.exe" -FallbackRelativePath "Programs" -DisplayName "MInstAll" }
+        "8" { Invoke-Tool "Programs\Activators\aact.exe" -FallbackRelativePath "Programs\Activators" -DisplayName "AAct" }
     }
 }
 
@@ -202,19 +247,21 @@ function SubMenu-Diag {
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
         "1" {
-            $report = $env:USERPROFILE + "\Desktop\Battery_Report.html"
+            $report = Join-Path $env:USERPROFILE "Desktop\Battery_Report.html"
             powercfg /batteryreport /output $report
-            Write-Host ("[OK] Отчет сохранен на Рабочий стол: " + $report) -ForegroundColor Green
+            Write-Host "[OK] Отчет сохранен на Рабочий стол: $report" -ForegroundColor Green
             Start-Process $report
             Pause
         }
         "2" {
             Write-Host "`n[+] Поиск сохраненных Wi-Fi сетей и паролей:`n" -ForegroundColor Cyan
             $profiles = netsh wlan show profiles | Select-String "All User Profile\s*:\s*(.*)$" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
-            foreach ($name in $profiles) {
-                $pass = netsh wlan show profile name="$name" key=clear | Select-String "Key Content\s*:\s*(.*)$" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+            foreach ($rawName in $profiles) {
+                # Санитизация имени профиля от инъекций кавычек
+                $safeName = $rawName.Replace('"', '\"')
+                $pass = netsh wlan show profile name="$safeName" key=clear | Select-String "Key Content\s*:\s*(.*)$" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
                 Write-Host "  Wi-Fi Сеть: " -NoNewline -ForegroundColor Yellow
-                Write-Host $name -NoNewline -ForegroundColor White
+                Write-Host $rawName -NoNewline -ForegroundColor White
                 Write-Host "  --> Пароль: " -NoNewline -ForegroundColor Cyan
                 Write-Host $pass -ForegroundColor Green
             }
@@ -230,20 +277,10 @@ function SubMenu-Diag {
             }
             Pause
         }
-        "4" {
-            $vic = Join-Path $DriveRoot "Programs\Portable\Victoria-5.37.exe"
-            if (Test-Path $vic) { Start-Process $vic } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
-        "5" { 
-            $cdi = Join-Path $DriveRoot "Programs\Diagnostic\CrystalDiskInfo9_6_3.exe"
-            if (-not (Test-Path $cdi)) { $cdi = Join-Path $DriveRoot "Programs\First Install\CrystalDiskInfo9_6_3.exe" }
-            if (Test-Path $cdi) { Start-Process $cdi } else { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
-        }
-        "6" { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
-        "7" { 
-            $sdi = Join-Path $DriveRoot "Programs\SDI\SDI_x64_R.exe"
-            if (Test-Path $sdi) { Start-Process $sdi } else { Write-Host "[-] Папка SDI не найдена на флешке" -ForegroundColor Red; Pause }
-        }
+        "4" { Invoke-Tool "Programs\Portable\Victoria-5.37.exe" -DisplayName "Victoria" }
+        "5" { Invoke-Tool "Programs\Diagnostic\CrystalDiskInfo9_6_3.exe" -FallbackRelativePath "Programs\First Install\CrystalDiskInfo9_6_3.exe" -DisplayName "CrystalDiskInfo" }
+        "6" { Invoke-Tool "Programs\Diagnostic" -DisplayName "Diagnostic" }
+        "7" { Invoke-Tool "Programs\SDI\SDI_x64_R.exe" -DisplayName "SDI" }
         "8" {
             $ar = Join-Path $DriveRoot "Programs\Portable\Autoruns-14.30.exe"
             $pe = Join-Path $DriveRoot "Programs\Portable\Process.Explorer-17.12.exe"
@@ -263,53 +300,43 @@ function SubMenu-Clean {
     Write-Host "  [3] Полная очистка Temp, кэша Windows Update и Prefetch"
     Write-Host "  [4] Сжатие и глубокая очистка папки WinSxS (DISM ComponentCleanup)"
     Write-Host "  [5] Удаление видеодрайверов под ноль (Запуск DDU)"
-    Write-Host "  [6] Сканер AdwCleaner (Локально с флешки или онлайн с GitHub)"
+    Write-Host "  [6] Сканер AdwCleaner (Локально с флешки или онлайн с официального сервера)"
     Write-Host "  [7] Скачать и запустить KVRT (Kaspersky Virus Removal Tool)"
     Write-Host "  [0] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
-        "1" {
-            $dismp = Join-Path $DriveRoot "Programs\Portable\Dism++10.1.1002.1B.exe"
-            if (Test-Path $dismp) { Start-Process $dismp } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
-        "2" {
-            $geek = Join-Path $DriveRoot "Programs\Portable\geek-1.5.3.170.exe"
-            if (Test-Path $geek) { Start-Process $geek } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
+        "1" { Invoke-Tool "Programs\Portable\Dism++10.1.1002.1B.exe" -DisplayName "Dism++" }
+        "2" { Invoke-Tool "Programs\Portable\geek-1.5.3.170.exe" -DisplayName "Geek Uninstaller" }
         "3" {
             Write-Host "`n[+] Очистка временных файлов..." -ForegroundColor Yellow
-            Remove-Item ($env:TEMP + "\*") -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "[OK] Готово!" -ForegroundColor Green; Pause
+            $clearedCount = 0
+            Get-ChildItem $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                try { Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop; $clearedCount++ } catch {}
+            }
+            Get-ChildItem "C:\Windows\Temp" -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                try { Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop; $clearedCount++ } catch {}
+            }
+            Write-Host "[OK] Временные файлы очищены ($clearedCount элементов обработано)!" -ForegroundColor Green
+            Pause
         }
         "4" {
             Write-Host "`n[+] Очистка и сжатие WinSxS..." -ForegroundColor Yellow
             dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
             Write-Host "[OK] Хранилище компонентов очищено!" -ForegroundColor Green; Pause
         }
-        "5" {
-            $ddu = Join-Path $DriveRoot "Programs\Diagnostic\DDU\Display Driver Uninstaller.exe"
-            if (Test-Path $ddu) { Start-Process $ddu } else { Start-Process (Join-Path $DriveRoot "Programs\Diagnostic") }
-        }
+        "5" { Invoke-Tool "Programs\Diagnostic\DDU\Display Driver Uninstaller.exe" -FallbackRelativePath "Programs\Diagnostic" -DisplayName "DDU" }
         "6" {
-            $localAdw = Join-Path $DriveRoot "Programs\Portable\adwcleaner-8.8.1.exe"
-            if (Test-Path $localAdw) {
-                Write-Host "`n[+] Запуск локальной версии AdwCleaner 8.8.1 с флешки..." -ForegroundColor Cyan
-                Start-Process $localAdw
-            } else {
-                Write-Host "`n[+] Скачивание свежего AdwCleaner с официального сервера..." -ForegroundColor Cyan
-                $adwPath = $env:TEMP + "\adwcleaner.exe"
-                Invoke-WebRequest -Uri "https://downloads.malwarebytes.com/file/adwcleaner" -OutFile $adwPath
-                Start-Process $adwPath
-            }
-            Pause
+            Invoke-Tool "Programs\Portable\adwcleaner-8.8.1.exe" `
+                -FallbackUrl "https://downloads.malwarebytes.com/file/adwcleaner" `
+                -DownloadName "adwcleaner.exe" `
+                -DisplayName "AdwCleaner"
         }
         "7" {
-            Write-Host "`n[+] Скачивание антивирусного сканера KVRT..." -ForegroundColor Cyan
-            $kvrtPath = $env:TEMP + "\KVRT.exe"
-            Invoke-WebRequest -Uri "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe" -OutFile $kvrtPath
-            Start-Process $kvrtPath; Pause
+            Invoke-Tool "Programs\Portable\KVRT.exe" `
+                -FallbackUrl "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe" `
+                -DownloadName "KVRT.exe" `
+                -DisplayName "KVRT"
         }
     }
 }
@@ -337,9 +364,11 @@ function SubMenu-Network {
         }
         "2" {
             Write-Host "`n[+] Скачивание актуального пакета Zapret (YouTube/Discord) с GitHub..." -ForegroundColor Cyan
-            $zapretZip = $env:TEMP + "\zapret-discord-youtube.zip"
+            $zapretZip = Join-Path $env:TEMP "zapret-discord-youtube.zip"
             $targetDir = Join-Path $DriveRoot "Programs\Zapret"
-            if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir | Out-Null }
+            if (-not (Test-Path $targetDir)) { 
+                New-Item -ItemType Directory -Path $targetDir -Force -ErrorAction SilentlyContinue | Out-Null 
+            }
             try {
                 Invoke-WebRequest -Uri "https://github.com/Flowseal/zapret-discord-youtube/releases/latest/download/zapret-discord-youtube.zip" -OutFile $zapretZip
                 Write-Host "[+] Распаковка в папку: $targetDir" -ForegroundColor Cyan
@@ -352,16 +381,17 @@ function SubMenu-Network {
             }
             Pause
         }
-        "3" {
-            $dnsj = Join-Path $DriveRoot "Programs\Portable\DNS.Jumper-2.3.exe"
-            if (Test-Path $dnsj) { Start-Process $dnsj } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
+        "3" { Invoke-Tool "Programs\Portable\DNS.Jumper-2.3.exe" -DisplayName "DNS Jumper" }
         "4" {
             Write-Host "`n[+] Запуск службы времени и принудительная синхронизация с серверами NTP..." -ForegroundColor Cyan
-            Start-Service w32time -ErrorAction SilentlyContinue
-            w32tm /config /syncfromflags:manual /manualpeerlist:"time.windows.com,pool.ntp.org" /update | Out-Null
-            w32tm /resync /force
-            Write-Host "`n[OK] Системное время синхронизировано! Ошибки сертификатов исправлены." -ForegroundColor Green
+            try {
+                Start-Service w32time -ErrorAction SilentlyContinue
+                w32tm /config /syncfromflags:manual /manualpeerlist:"time.windows.com,pool.ntp.org" /update | Out-Null
+                w32tm /resync /force
+                Write-Host "`n[OK] Системное время синхронизировано! Ошибки сертификатов исправлены." -ForegroundColor Green
+            } catch {
+                Write-Host "[-] Ошибка синхронизации времени: $_" -ForegroundColor Red
+            }
             Pause
         }
         "5" {
@@ -397,18 +427,9 @@ function SubMenu-Fixes {
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
-        "1" {
-            $defctrl = Join-Path $DriveRoot "Programs\Portable\DefenderControl-2.1.exe"
-            if (Test-Path $defctrl) { Start-Process $defctrl } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
-        "2" {
-            $wub = Join-Path $DriveRoot "Programs\Portable\Windows.Update.Blocker-1.8.exe"
-            if (Test-Path $wub) { Start-Process $wub } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
-        "3" {
-            $oosu = Join-Path $DriveRoot "Programs\Portable\OOSU10-3.2.1111.exe"
-            if (Test-Path $oosu) { Start-Process $oosu } else { Start-Process (Join-Path $DriveRoot "Programs\Portable") }
-        }
+        "1" { Invoke-Tool "Programs\Portable\DefenderControl-2.1.exe" -DisplayName "Defender Control" }
+        "2" { Invoke-Tool "Programs\Portable\Windows.Update.Blocker-1.8.exe" -DisplayName "Windows Update Blocker" }
+        "3" { Invoke-Tool "Programs\Portable\OOSU10-3.2.1111.exe" -DisplayName "O&O ShutUp10" }
         "4" {
             Write-Host "`n[+] Запуск SFC и DISM..." -ForegroundColor Yellow
             sfc /scannow
@@ -419,7 +440,7 @@ function SubMenu-Fixes {
             Write-Host "`n[+] Остановка службы диспетчера печати и очистка очереди..." -ForegroundColor Cyan
             Stop-Service spooler -Force -ErrorAction SilentlyContinue
             Remove-Item "$env:SystemRoot\System32\spool\PRINTERS\*" -Force -Recurse -ErrorAction SilentlyContinue
-            Start-Service spooler
+            Start-Service spooler -ErrorAction SilentlyContinue
             Write-Host "`n[OK] Очередь печати очищена! Принтер разблокирован." -ForegroundColor Green
             Pause
         }
@@ -493,9 +514,9 @@ function SubMenu-Win7 {
             Write-Host "`n[OK] Системный TLS 1.2 включен!" -ForegroundColor Green; Pause
         }
         "2" {
-            $vcredist = Join-Path $DriveRoot "Programs\First Install\VisualCppRedist_AIO.exe"
-            if (-not (Test-Path $vcredist)) { $vcredist = Join-Path $DriveRoot "Programs\System\RuntimePack_Lite-20.3.3.exe" }
-            if (Test-Path $vcredist) { Start-Process $vcredist } else { Start-Process (Join-Path $DriveRoot "Programs\System") }
+            Invoke-Tool "Programs\First Install\VisualCppRedist_AIO.exe" `
+                -FallbackRelativePath "Programs\System\RuntimePack_Lite-20.3.3.exe" `
+                -DisplayName "Visual C++ Runtime"
         }
     }
 }

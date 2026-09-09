@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.9.0-beta] - 2026-08-20
+## [1.1.0-beta] - 2026-09-09
+
+### Refactored
+- Architecture: Introduced unified `Invoke-Tool` DRY dispatcher for launching tools with path validation and automatic web fallback.
+- Security: Sanitized Wi-Fi profile name arguments in `netsh` command to prevent argument injection.
+- Reliability: Eliminated silent failures and unhandled empty `catch {}` blocks across network checks, TLS setup, and time sync.
+- Institutional Memory: Added `docs/solutions/` database with solution record `001-powershell-encoding-and-compatibility.md`.
+- Storage: Cleaned up 10 outdated software duplicates on USB flash drive.
+
+## [1.0.0-beta] - 2026-08-21
 
 ### Added
 - Modular architecture with `Toolbox.bat` auto-elevation launcher and `Toolbox.ps1` main interface.
