@@ -1,12 +1,13 @@
 @echo off
-title USB SysAdmin Universal Toolbox
+title USB SysAdmin Universal Toolbox [Super-Admin Launcher]
 chcp 65001 >nul
-cd /d "%~dp0"
+set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%"
 
-:: 1. Проверка прав Администратора и автоматический перезапуск
+:: 1. Проверка прав Администратора и автоматический перезапуск с сохранением пути
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath '%~f0'" 2>nul
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath 'cmd.exe' -ArgumentList '/c ""%~f0""' -WorkingDirectory '%SCRIPT_DIR%'" 2>nul
     exit /b
 )
 
@@ -16,8 +17,8 @@ if %errorLevel% neq 0 (
     goto :CMD_FALLBACK
 )
 
-:: 3. Запуск чистого PowerShell модуля
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Toolbox.ps1"
+:: 3. Запуск чистого PowerShell модуля с повышенными привилегиями
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%Toolbox.ps1"
 if %errorLevel% neq 0 (
     echo.
     echo [-] Ошибка выполнения PowerShell скрипта.
@@ -38,7 +39,7 @@ echo [4] Сброс сети (Netsh Winsock Reset)
 echo [0] Выход
 echo ============================================================
 set /p choice="Выберите действие (0-4): "
-if "%choice%"=="1" start "" "%~dp0Programs\Diagnostic" & goto :CMD_FALLBACK
+if "%choice%"=="1" start "" "%SCRIPT_DIR%Programs\Diagnostic" & goto :CMD_FALLBACK
 if "%choice%"=="2" chkdsk C: /f & pause & goto :CMD_FALLBACK
 if "%choice%"=="3" sfc /scannow & pause & goto :CMD_FALLBACK
 if "%choice%"=="4" netsh winsock reset & echo Перезагрузите ПК & pause & goto :CMD_FALLBACK

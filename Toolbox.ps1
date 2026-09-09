@@ -1,9 +1,68 @@
 ﻿# =========================================================================
-# ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11)
+# ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11) - СУПЕР-АДМИНИСТРАТОР
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox v1.1"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN]"
 $DriveRoot = $PSScriptRoot
+
+# 1. ПРОВЕРКА И САМО-ЭЛЕВАЦИЯ ДО АДМИНИСТРАТОРА (при прямом запуске .ps1)
+$currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
+$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "[!] Запуск с ограниченными правами. Запрос прав Супер-Администратора..." -ForegroundColor Yellow
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = "powershell.exe"
+    $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    $psi.Verb = "RunAs"
+    $psi.WorkingDirectory = $DriveRoot
+    try {
+        [System.Diagnostics.Process]::Start($psi) | Out-Null
+        exit
+    } catch {
+        Write-Host "[-] Отказано в повышении прав. Часть системных твиков будет недоступна." -ForegroundColor Red
+        Pause
+    }
+}
+
+# 2. АКТИВАЦИЯ СКРЫТЫХ ПРИВИЛЕГИЙ ТОКЕНА (TOKEN PRIVILEGE BOOSTER: SeDebugPrivilege, SeTakeOwnership)
+try {
+    $privDef = @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class TokenPrivilegeHelper {
+        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+        public static extern bool AdjustTokenPrivileges(IntPtr htok, bool disall, ref TOKEN_PRIVILEGES newst, int len, IntPtr prev, IntPtr relen);
+        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+        public static extern bool OpenProcessToken(IntPtr h, int acc, ref IntPtr phtok);
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern bool LookupPrivilegeValue(string host, string name, ref long pluid);
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        public struct TOKEN_PRIVILEGES {
+            public int PrivilegeCount;
+            public long Luid;
+            public int Attributes;
+        }
+        public static bool Enable(string priv) {
+            IntPtr hToken = IntPtr.Zero;
+            if (!OpenProcessToken(System.Diagnostics.Process.GetCurrentProcess().Handle, 0x0028, ref hToken)) return false;
+            TOKEN_PRIVILEGES tp = new TOKEN_PRIVILEGES();
+            tp.PrivilegeCount = 1;
+            tp.Attributes = 2; // SE_PRIVILEGE_ENABLED
+            if (!LookupPrivilegeValue(null, priv, ref tp.Luid)) return false;
+            return AdjustTokenPrivileges(hToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+"@
+    if (-not ([System.Management.Automation.PSTypeName]'TokenPrivilegeHelper').Type) {
+        Add-Type -TypeDefinition $privDef -Language CSharp -ErrorAction SilentlyContinue
+    }
+    [TokenPrivilegeHelper]::Enable("SeDebugPrivilege") | Out-Null
+    [TokenPrivilegeHelper]::Enable("SeTakeOwnershipPrivilege") | Out-Null
+    [TokenPrivilegeHelper]::Enable("SeBackupPrivilege") | Out-Null
+    [TokenPrivilegeHelper]::Enable("SeRestorePrivilege") | Out-Null
+} catch {}
 
 # Безопасное включение современных протоколов TLS для старых Windows 7 / 8.1
 try {
@@ -78,14 +137,15 @@ function Invoke-Tool {
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.1                                 " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.2                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
+    Write-Host "  Права: [ СУПЕР-АДМИНИСТРАТОР (HIGH INTEGRITY / SeDebug) ]" -ForegroundColor Green
     if ($isOnline) {
-        Write-Host "  Сеть: [ ОНЛАЙН (Доступ к GitHub активен) ]" -ForegroundColor Green
+        Write-Host "  Сеть:  [ ОНЛАЙН (Доступ к GitHub активен) ]" -ForegroundColor Green
     } else {
-        Write-Host "  Сеть: [ ОФФЛАЙН (Доступны локальные утилиты флешки) ]" -ForegroundColor Red
+        Write-Host "  Сеть:  [ ОФФЛАЙН (Доступны локальные утилиты флешки) ]" -ForegroundColor Red
     }
     Write-Host "==============================================================================================" -ForegroundColor Cyan
 }
@@ -257,7 +317,6 @@ function SubMenu-Diag {
             Write-Host "`n[+] Поиск сохраненных Wi-Fi сетей и паролей:`n" -ForegroundColor Cyan
             $profiles = netsh wlan show profiles | Select-String "All User Profile\s*:\s*(.*)$" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
             foreach ($rawName in $profiles) {
-                # Санитизация имени профиля от инъекций кавычек
                 $safeName = $rawName.Replace('"', '\"')
                 $pass = netsh wlan show profile name="$safeName" key=clear | Select-String "Key Content\s*:\s*(.*)$" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
                 Write-Host "  Wi-Fi Сеть: " -NoNewline -ForegroundColor Yellow

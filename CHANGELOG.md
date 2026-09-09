@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0-beta] - 2026-09-09
+
+### Added
+- Super-Admin 1-Click Launcher: Created `Toolbox.lnk` with embedded `SLDF_RUNAS_USER` UAC shield icon.
+- Token Privilege Booster: Integrated Win32 API `AdjustTokenPrivileges` into `Toolbox.ps1` to unlock `SeDebugPrivilege`, `SeTakeOwnershipPrivilege`, `SeBackupPrivilege`.
+- Working Directory Preservation: Fixed UAC elevation working directory reset bug in `Toolbox.bat`.
+- Internal Self-Elevation Guard: Added automatic elevation directly inside `Toolbox.ps1`.
+- Institutional Memory: Added solution record `002-windows-uac-elevation-and-token-privileges.md`.
+
 ## [1.1.0-beta] - 2026-09-09
 
 ### Refactored
