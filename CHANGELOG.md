@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0-beta] - 2026-09-09
+
+### Added
+- Data Recovery & Disk Cloning Suite (`SubMenu-DataRecovery`): Integrated launch dispatcher for DMDE, R-Studio, AOMEI Partition Assistant, Acronis / AOMEI Backupper, EaseUS Data Recovery, and HDD Low Level Format Tool.
+- Low-End PC Optimization & Space Reclamation (`SubMenu-Boost`): Instant hibernation toggle (`powercfg -h off/on`) freeing 8-32 GB on disk `C:`, Windows Search indexing service control (`WSearch`), Ultimate Performance power plan unlocking, and icon/thumbnail cache rebuilder.
+- Ventoy Automation Engine (`ventoy/ventoy.json`): Out-of-the-box bypass for Windows 11 hardware checks (TPM 2.0, Secure Boot, minimum RAM, CPU) and forced Microsoft account requirement (Bypass NRO), plus human-readable menu aliases for 8 primary ISO images.
+- Institutional Memory: Added solution record `005-ventoy-automation-and-low-end-pc-optimization.md`.
+
 ## [1.4.0-beta] - 2026-09-09
 
 ### Added

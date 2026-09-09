@@ -1,8 +1,8 @@
 ﻿# =========================================================================
-# ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11) - СУПЕР-АДМИНИСТРАТОР
+# ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11) - СУПЕР-АДМИНИСТРАТОР v1.5
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN v1.4]"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN v1.5]"
 $DriveRoot = $PSScriptRoot
 
 # 1. ПРОВЕРКА И САМО-ЭЛЕВАЦИЯ ДО АДМИНИСТРАТОРА (при прямом запуске .ps1)
@@ -160,7 +160,7 @@ function Invoke-SystemDoctor {
                     Level = "ВНИМАНИЕ"
                     Component = "Диск C:"
                     PlainReason = "На системном диске C: осталось критически мало места ($freeGB ГБ)."
-                    Solution = "Запустите очистку через меню [3]->[3] (Очистка Temp) и [3]->[4] (Сжатие WinSxS)."
+                    Solution = "Запустите очистку через меню [3]->[3] (Очистка Temp) или отключите гибернацию [7]->[1]."
                 }
             }
         }
@@ -237,7 +237,7 @@ function Invoke-SystemDoctor {
                 Level = "КРИТИЧНО"
                 Component = "Процессор / Железо (WHEA)"
                 PlainReason = "Обнаружены аппаратные ошибки процессора или шины PCIe (WHEA-Logger). Возможен перегрев CPU, нестабильный разгон или сбой цепей питания."
-                Solution = "Проверьте температуры и стабильность под нагрузкой через меню [2]->[6] (OCCT / AIDA64). Сбросьте разгон в BIOS [6]."
+                Solution = "Проверьте температуры и стабильность под нагрузкой через меню [2]->[6] (OCCT / AIDA64). Сбросьте разгон в BIOS [8]."
             }
         }
         $kpEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=41; StartTime=$since30} -ErrorAction SilentlyContinue
@@ -428,7 +428,7 @@ function Invoke-WebcamMicDoctor {
     Write-Host "--- 1. ВЕБ-КАМЕРА (ВИДЕО) ---" -ForegroundColor Cyan
     $cameras = Get-PnpDevice -Class "Camera", "Image" -PresentOnly -ErrorAction SilentlyContinue
     if (-not $cameras) {
-        $cameras = Get-PnpDevice | Where-Object { $_.FriendlyName -match "camera|webcam|видеокамера|камера" } -ErrorAction SilentlyContinue
+        $cameras = Get-PnpDevice -PresentOnly | Where-Object { $_.FriendlyName -match "camera|webcam|видеокамера|камера" } -ErrorAction SilentlyContinue
     }
 
     if ($cameras) {
@@ -503,7 +503,6 @@ function Invoke-WebcamMicDoctor {
 
     # Проверка аудиослужб
     $audioSrv = Get-Service "Audiosrv" -ErrorAction SilentlyContinue
-    $audioEnd = Get-Service "AudioEndpointBuilder" -ErrorAction SilentlyContinue
     Write-Host "`n  [i] Служба звука Windows (Audiosrv): " -NoNewline -ForegroundColor Gray
     if ($audioSrv.Status -eq "Running") {
         Write-Host "Работает" -ForegroundColor Green
@@ -571,7 +570,6 @@ function Invoke-WebcamMicFix {
         if (-not (Test-Path $p)) { New-Item -Path $p -Force -ErrorAction SilentlyContinue | Out-Null }
         Set-ItemProperty -Path $p -Name "Value" -Value "Allow" -Force -ErrorAction SilentlyContinue
     }
-    # Глобальные политики
     $polPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy"
     if (-not (Test-Path $polPath)) { New-Item -Path $polPath -Force -ErrorAction SilentlyContinue | Out-Null }
     Set-ItemProperty -Path $polPath -Name "LetAppsAccessCamera" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
@@ -616,10 +614,102 @@ function Invoke-WebcamMicFix {
     Pause
 }
 
+# =========================================================================
+# МОДУЛЬ 6: СПАСЕНИЕ ДАННЫХ И ДИСКОВЫЕ УТИЛИТЫ
+# =========================================================================
+function SubMenu-DataRecovery {
+    Show-Header
+    Write-Host "`n--- [ СПАСЕНИЕ ДАННЫХ И КЛОНИРОВАНИЕ ДИСКОВ ] ---" -ForegroundColor Blue
+    Write-Host "  [1] DMDE (Восстановление поврежденных разделов MBR/GPT и файлов)"
+    Write-Host "  [2] R-Studio (Профессиональное восстановление с поврежденных SSD/HDD)"
+    Write-Host "  [3] AOMEI Partition Assistant (Переразметка, конвертация MBR<->GPT без потерь)"
+    Write-Host "  [4] Клонирование диска на новый SSD (AOMEI Backupper / Acronis True Image)"
+    Write-Host "  [5] EaseUS Data Recovery Wizard (Экспресс-поиск удаленных фото и документов)"
+    Write-Host "  [6] HDD Low Level Format Tool (Низкоуровневая затирка битого диска в ноль)"
+    Write-Host "  [0] Назад в главное меню"
+
+    $c = Read-Host "`nВыберите пункт"
+    switch ($c) {
+        "1" { Invoke-Tool "Programs\Service HDD-SSD\dmde-4.4.4.842.exe" -DisplayName "DMDE" }
+        "2" { Invoke-Tool "Programs\Service HDD-SSD\R-Studio.v9.5.191810.exe" -DisplayName "R-Studio" }
+        "3" { Invoke-Tool "Programs\Service HDD-SSD\AOMEI.Partition.Assistant.v10.11.0.exe" -DisplayName "AOMEI Partition Assistant" }
+        "4" { 
+            Invoke-Tool "Programs\Service HDD-SSD\AOMEI.Backupper.v8.4.0.exe" `
+                -FallbackRelativePath "Programs\Service HDD-SSD\Acronis.True.Image.2021.v25.10.1.39287.exe" `
+                -DisplayName "Cloning Tool"
+        }
+        "5" { Invoke-Tool "Programs\Service HDD-SSD\EaseUS.Data.Recovery.Wizard-16.5.0.exe" -DisplayName "EaseUS Data Recovery" }
+        "6" { Invoke-Tool "Programs\Service HDD-SSD\HDD.Low.Level.Format.Tool-4.50.exe" -DisplayName "HDD Low Level Format" }
+    }
+}
+
+# =========================================================================
+# МОДУЛЬ 7: УСКОРЕНИЕ СЛАБЫХ ПК И ОСВОБОЖДЕНИЕ МЕСТА
+# =========================================================================
+function SubMenu-Boost {
+    Show-Header
+    Write-Host "`n--- [ УСКОРЕНИЕ СЛАБЫХ ПК И ТВЕРДОЕ ОСВОБОЖДЕНИЕ ДИСКА C: ] ---" -ForegroundColor DarkCyan
+    Write-Host "  [1] Отключить гибернацию (powercfg -h off) -> Мгновенно освобождает 8-32 ГБ на C:!" -ForegroundColor Green
+    Write-Host "  [2] Включить гибернацию обратно (powercfg -h on)"
+    Write-Host "  [3] Отключить службу поиска и индексации (WSearch) -> Снимает 100% нагрузку с HDD!" -ForegroundColor Yellow
+    Write-Host "  [4] Включить службу поиска (WSearch) обратно"
+    Write-Host "  [5] Включить схему питания 'Максимальная производительность' (Ultimate Performance)" -ForegroundColor Cyan
+    Write-Host "  [6] Сброс поврежденного кэша иконок и эскизов (IconCache & ThumbCache)"
+    Write-Host "  [0] Назад в главное меню"
+
+    $c = Read-Host "`nВыберите пункт"
+    switch ($c) {
+        "1" {
+            Write-Host "`n[+] Отключение гибернации и удаление скрытого файла C:\hiberfil.sys..." -ForegroundColor Cyan
+            powercfg.exe -h off
+            Write-Host "[OK] Гибернация выключена! На диске C: освобождено место размером с объем вашей RAM (8-32 ГБ)!" -ForegroundColor Green
+            Pause
+        }
+        "2" {
+            powercfg.exe -h on
+            Write-Host "[OK] Гибернация включена обратно!" -ForegroundColor Green
+            Pause
+        }
+        "3" {
+            Write-Host "`n[+] Остановка и отключение службы Windows Search (индексация)..." -ForegroundColor Cyan
+            Stop-Service "WSearch" -Force -ErrorAction SilentlyContinue
+            Set-Service "WSearch" -StartupType Disabled -ErrorAction SilentlyContinue
+            Write-Host "[OK] Служба поиска отключена! Нагрузка на жесткий диск (HDD) снижена." -ForegroundColor Green
+            Pause
+        }
+        "4" {
+            Set-Service "WSearch" -StartupType Automatic -ErrorAction SilentlyContinue
+            Start-Service "WSearch" -ErrorAction SilentlyContinue
+            Write-Host "[OK] Служба поиска восстановлена!" -ForegroundColor Green
+            Pause
+        }
+        "5" {
+            Write-Host "`n[+] Разблокировка и применение плана электропитания 'Максимальная производительность'..." -ForegroundColor Cyan
+            try {
+                powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+                powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+                Write-Host "[OK] Схема электропитания 'Максимальная производительность' активирована!" -ForegroundColor Green
+            } catch {
+                Write-Host "[-] Ошибка активации схемы: $_" -ForegroundColor Red
+            }
+            Pause
+        }
+        "6" {
+            Write-Host "`n[+] Очистка кэша значков IconCache.db и перезапуск проводника..." -ForegroundColor Cyan
+            Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+            Remove-Item "$env:LOCALAPPDATA\IconCache.db" -Force -ErrorAction SilentlyContinue
+            Remove-Item "$env:LOCALAPPDATA\Microsoft\Windows\Explorer\thumbcache_*.db" -Force -ErrorAction SilentlyContinue
+            Start-Process explorer.exe
+            Write-Host "[OK] Кэш значков обновлен!" -ForegroundColor Green
+            Pause
+        }
+    }
+}
+
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.4                                 " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.5                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
@@ -710,15 +800,29 @@ function Main-Menu {
     Write-Host ""
 
     # Блок 6
-    Write-Host "  [ 6 ] ПЕРЕЗАГРУЗКА В BIOS / UEFI" -ForegroundColor Red
+    Write-Host "  [ 6 ] СПАСЕНИЕ ДАННЫХ И КЛОНИРОВАНИЕ SSD" -ForegroundColor Blue
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
-    Write-Host "  | [6] Перезапуск в BIOS             | Прямой вход в настройки материнки (UEFI Firmware)    |" -ForegroundColor Gray
+    Write-Host "  | [6] Меню спасения данных          | DMDE, R-Studio, AOMEI, Acronis, Low Level Format     |" -ForegroundColor White
+    Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host ""
+
+    # Блок 7
+    Write-Host "  [ 7 ] УСКОРЕНИЕ СЛАБЫХ ПК И ОЧИСТКА ДИСКА C:" -ForegroundColor DarkCyan
+    Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host "  | [7] Меню ускорения и места        | Отключение hiberfil.sys (-16GB), WSearch, Power Plan |" -ForegroundColor White
+    Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host ""
+
+    # Блок 8
+    Write-Host "  [ 8 ] ПЕРЕЗАГРУЗКА В BIOS / UEFI" -ForegroundColor Red
+    Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host "  | [8] Перезапуск в BIOS             | Прямой вход в настройки материнки (UEFI Firmware)    |" -ForegroundColor Gray
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
 
-    # Блок 7 (если Win 7)
+    # Блок 9 (если Win 7)
     if ($isWin7) {
         Write-Host ""
-        Write-Host "  [ 7 ] ПАКЕТ РЕАНИМАЦИИ WINDOWS 7" -ForegroundColor DarkYellow
+        Write-Host "  [ 9 ] ПАКЕТ РЕАНИМАЦИИ WINDOWS 7" -ForegroundColor DarkYellow
         Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
         Write-Host "  | [1] Включить TLS 1.1 / TLS 1.2    | Активация современных защищенных протоколов HTTPS    |" -ForegroundColor Gray
         Write-Host "  | [2] Visual C++ All-in-One         | Установка всех библиотек рантайма с флешки           |" -ForegroundColor Gray
@@ -1026,7 +1130,7 @@ function SubMenu-Fixes {
     }
 }
 
-# --- ПОДМЕНЮ 6: ПЕРЕЗАГРУЗКА В BIOS / UEFI ---
+# --- ПОДМЕНЮ 8: ПЕРЕЗАГРУЗКА В BIOS / UEFI ---
 function Action-RebootToBios {
     Show-Header
     Write-Host "`n--- [ ПЕРЕЗАГРУЗКА В BIOS / UEFI ] ---" -ForegroundColor Red
@@ -1048,7 +1152,7 @@ function Action-RebootToBios {
     }
 }
 
-# --- ПОДМЕНЮ 7: СПЕЦИАЛЬНО ДЛЯ WINDOWS 7 ---
+# --- ПОДМЕНЮ 9: СПЕЦИАЛЬНО ДЛЯ WINDOWS 7 ---
 function SubMenu-Win7 {
     Show-Header
     Write-Host "`n--- [ ПАКЕТ РЕАНИМАЦИИ WINDOWS 7 ] ---" -ForegroundColor DarkYellow
@@ -1074,14 +1178,16 @@ function SubMenu-Win7 {
 # ГЛАВНЫЙ ЦИКЛ ПРИЛОЖЕНИЯ
 do {
     Main-Menu
-    $mainChoice = Read-Host "Выберите раздел (0-6)"
+    $mainChoice = Read-Host "Выберите раздел (0-8)"
     switch ($mainChoice) {
         "1" { SubMenu-Soft }
         "2" { SubMenu-Diag }
         "3" { SubMenu-Clean }
         "4" { SubMenu-Network }
         "5" { SubMenu-Fixes }
-        "6" { Action-RebootToBios }
-        "7" { if ($isWin7) { SubMenu-Win7 } }
+        "6" { SubMenu-DataRecovery }
+        "7" { SubMenu-Boost }
+        "8" { Action-RebootToBios }
+        "9" { if ($isWin7) { SubMenu-Win7 } }
     }
 } while ($mainChoice -ne "0")

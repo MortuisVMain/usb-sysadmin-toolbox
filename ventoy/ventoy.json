@@ -1,0 +1,44 @@
+{
+    "control": [
+        {
+            "VTOY_WIN11_BYPASS_CHECK": "1"
+        },
+        {
+            "VTOY_WIN11_BYPASS_NRO": "1"
+        }
+    ],
+    "menu_alias": [
+        {
+            "image": "/OS/WinPE11_10_8_Sergei_Strelec_x86_x64_2026.07.09_Russian.iso",
+            "alias": "🚑 WinPE 11/10 Sergei Strelec (Свежая сборка 2026)"
+        },
+        {
+            "image": "/OS/Windows 11 (25H2) Build 26200.7171.iso",
+            "alias": "🪟 Windows 11 Pro (25H2) Чистый дистрибутив"
+        },
+        {
+            "image": "/OS/Windows 10 22H2 + LTSC 21H2 (x64).iso",
+            "alias": "🪟 Windows 10 Pro 22H2 + LTSC 21H2"
+        },
+        {
+            "image": "/OS/Kaspersky Rescue Disk.iso",
+            "alias": "🛡️ Kaspersky Rescue Disk (Антивирусная реанимация)"
+        },
+        {
+            "image": "/OS/Hiren's BootCD PE x64 (v1.0.8).iso",
+            "alias": "🛠️ Hiren's BootCD PE x64"
+        },
+        {
+            "image": "/OS/Windows 7.iso",
+            "alias": "🪟 Windows 7 SP1 All-in-One"
+        },
+        {
+            "image": "/OS/Windows XP.ISO",
+            "alias": "🪟 Windows XP Professional SP3"
+        },
+        {
+            "image": "/OS/Windows XP BOXOS.ISO",
+            "alias": "🪟 Windows XP BoxOS"
+        }
+    ]
+}
