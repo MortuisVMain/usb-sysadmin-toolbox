@@ -16,3 +16,4 @@
 | :--- | :--- | :--- | :--- |
 | **[001](001-powershell-encoding-and-compatibility.md)** | 2026-08-20 / 2026-09-09 | [Кодировка UTF-8 BOM, обратная совместимость PS 5.1 и безопасный вызов системных утилит](001-powershell-encoding-and-compatibility.md) | Windows PowerShell, CMD, UAC, TLS |
 | **[002](002-windows-uac-elevation-and-token-privileges.md)** | 2026-09-09 | [Гарантированный запуск с правами Супер-Администратора (High Integrity & SeDebugPrivilege)](002-windows-uac-elevation-and-token-privileges.md) | Windows Security, UAC, Win32 API, LNK |
+| **[003](003-automated-health-doctor-diagnostics.md)** | 2026-09-09 | [Интеллектуальный модуль экспресс-диагностики «Доктор ПК» (Human-Readable Health Advisor)](003-automated-health-doctor-diagnostics.md) | Diagnostics, Hardware, SMART, BSOD, Event Log |

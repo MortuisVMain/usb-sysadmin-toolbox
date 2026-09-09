@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0-beta] - 2026-09-09
+
+### Added
+- System Doctor Module (`Invoke-SystemDoctor`): Automated 6-factor health scanner (SMART, RAM leaks, BSOD/WHEA crash analysis, DISM integrity, Battery wear, Network/DNS).
+- Human-Readable Health Advisor: Translates cryptic error codes into plain Russian explanations with exact button recommendations for fixes.
+- Safe Console Rendering: Sanitized multi-byte emojis for 100% universal compatibility with Windows 7/8/10/11 consoles.
+- Institutional Memory: Documented diagnostic signature mappings in `003-automated-health-doctor-diagnostics.md`.
+
 ## [1.2.0-beta] - 2026-09-09
 
 ### Added

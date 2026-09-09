@@ -2,7 +2,7 @@
 # ОСНОВНОЙ МОДУЛЬ POWERSHELL (WINDOWS 7 / 8 / 10 / 11) - СУПЕР-АДМИНИСТРАТОР
 # =========================================================================
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN]"
+$Host.UI.RawUI.WindowTitle = "USB SysAdmin Universal Toolbox [SUPER-ADMIN v1.3]"
 $DriveRoot = $PSScriptRoot
 
 # 1. ПРОВЕРКА И САМО-ЭЛЕВАЦИЯ ДО АДМИНИСТРАТОРА (при прямом запуске .ps1)
@@ -134,10 +134,296 @@ function Invoke-Tool {
     }
 }
 
+# =========================================================================
+# МОДУЛЬ «ДОКТОР ПК» (ИНТЕЛЛЕКТУАЛЬНАЯ ДИАГНОСТИКА ПРОСТЫМИ СЛОВАМИ)
+# =========================================================================
+function Invoke-SystemDoctor {
+    Clear-Host
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host "                     [+] ЭКСПРЕСС-ДИАГНОСТИКА: ДОКТОР ПК (ЗДОРОВЬЕ СИСТЕМЫ)                   " -ForegroundColor Yellow
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Write-Host " Запуск комплексного теста оборудования и Windows..." -ForegroundColor DarkGray
+    Write-Host " (Анализ занимает около 20-30 секунд, пожалуйста, подождите)`n" -ForegroundColor DarkGray
+
+    $issues = @()
+
+    # 1. ТЕСТ ДИСКОВ И ПАМЯТИ C:
+    Write-Host " [1/6] Проверка накопителей (SSD / HDD и свободное место)..." -NoNewline
+    $diskIssue = $false
+    try {
+        $cDrive = Get-PSDrive C -ErrorAction SilentlyContinue
+        if ($cDrive) {
+            $freeGB = [math]::Round($cDrive.Free / 1GB, 1)
+            if ($freeGB -lt 15) {
+                $diskIssue = $true
+                $issues += [PSCustomObject]@{
+                    Level = "ВНИМАНИЕ"
+                    Component = "Диск C:"
+                    PlainReason = "На системном диске C: осталось критически мало места ($freeGB ГБ)."
+                    Solution = "Запустите очистку через меню [3]->[3] (Очистка Temp) и [3]->[4] (Сжатие WinSxS)."
+                }
+            }
+        }
+        $smartPred = Get-WmiObject -Namespace root\wmi -Class MSStorageDriver_FailurePredictStatus -ErrorAction SilentlyContinue
+        if ($smartPred) {
+            foreach ($s in $smartPred) {
+                if ($s.PredictFailure) {
+                    $diskIssue = $true
+                    $issues += [PSCustomObject]@{
+                        Level = "КРИТИЧНО"
+                        Component = "SMART Накопителя"
+                        PlainReason = "Накопитель сообщает о скором выходе из строя (появились битые сектора / износ ячеек SSD)."
+                        Solution = "Срочно скопируйте важные файлы на флешку! Проверьте диск через меню [2]->[4] (Victoria) и замените его."
+                    }
+                }
+            }
+        }
+        if (-not $diskIssue) {
+            Write-Host " [ ОК ]" -ForegroundColor Green
+        } else {
+            Write-Host " [ НАЙДЕНЫ ПРОБЛЕМЫ ]" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host " [ ПРОПУЩЕНО ]" -ForegroundColor DarkGray
+    }
+
+    # 2. ТЕСТ ОПЕРАТИВНОЙ ПАМЯТИ
+    Write-Host " [2/6] Проверка оперативной памяти (RAM) и утечек..." -NoNewline
+    $ramIssue = $false
+    try {
+        $osMem = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+        if ($osMem) {
+            $freeRamMB = [math]::Round($osMem.FreePhysicalMemory / 1024, 0)
+            $totalRamMB = [math]::Round($osMem.TotalVisibleMemorySize / 1024, 0)
+            if ($freeRamMB -lt 400 -and $totalRamMB -ge 2048) {
+                $ramIssue = $true
+                $issues += [PSCustomObject]@{
+                    Level = "ВНИМАНИЕ"
+                    Component = "Оперативная память"
+                    PlainReason = "Оперативная память почти полностью исчерпана (свободно менее $freeRamMB МБ из $totalRamMB МБ)."
+                    Solution = "Закройте лишние фоновые программы или проверьте автозагрузку через меню [2]->[8] (Autoruns)."
+                }
+            }
+        }
+        # Проверка логов нехватки памяти (Event ID 2004) за последние 7 дней
+        $since = (Get-Date).AddDays(-7)
+        $memEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=2004; StartTime=$since} -ErrorAction SilentlyContinue
+        if ($memEvents) {
+            $ramIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "Утечки памяти"
+                PlainReason = "За последнюю неделю зафиксированы зависания Windows из-за нехватки RAM (Resource-Exhaustion)."
+                Solution = "Проверьте приложения с утечками памяти через [2]->[8] (Process Explorer) или увеличьте файл подкачки."
+            }
+        }
+        if (-not $ramIssue) {
+            Write-Host " [ ОК ]" -ForegroundColor Green
+        } else {
+            Write-Host " [ ВНИМАНИЕ ]" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host " [ ПРОПУЩЕНО ]" -ForegroundColor DarkGray
+    }
+
+    # 3. ТЕСТ СИНИХ ЭКРАНОВ (BSOD) И АППАРАТНЫХ ОШИБОК WHEA
+    Write-Host " [3/6] Анализ синих экранов (BSOD) и аппаратных сбоев WHEA..." -NoNewline
+    $crashIssue = $false
+    try {
+        $since30 = (Get-Date).AddDays(-30)
+        # 1. WHEA ошибки процессора и чипсета
+        $wheaEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'; StartTime=$since30} -ErrorAction SilentlyContinue
+        if ($wheaEvents) {
+            $crashIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "КРИТИЧНО"
+                Component = "Процессор / Железо (WHEA)"
+                PlainReason = "Обнаружены аппаратные ошибки процессора или шины PCIe (WHEA-Logger). Возможен перегрев CPU, нестабильный разгон или сбой цепей питания."
+                Solution = "Проверьте температуры и стабильность под нагрузкой через меню [2]->[6] (OCCT / AIDA64). Сбросьте разгон в BIOS [6]."
+            }
+        }
+        # 2. Внезапные отключения (Kernel-Power Event 41)
+        $kpEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=41; StartTime=$since30} -ErrorAction SilentlyContinue
+        if ($kpEvents -and $kpEvents.Count -ge 3) {
+            $crashIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "Питание (Kernel-Power)"
+                PlainReason = "Зафиксировано $($kpEvents.Count) внезапных отключений или перезагрузок ПК без штатного завершения работы."
+                Solution = "Возможен сбой блока питания (БП), скачки напряжения в розетке или перегрев. Проверьте кабели питания."
+            }
+        }
+        # 3. Дампы BSOD в папке Minidump
+        $dumps = Get-ChildItem "C:\Windows\Minidump" -ErrorAction SilentlyContinue
+        if ($dumps -and $dumps.Count -gt 0) {
+            $crashIssue = $true
+            # Проверяем последний BSOD Event 1001
+            $bsodEvent = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1001; StartTime=$since30} -MaxEvents 1 -ErrorAction SilentlyContinue
+            $bsodDesc = "В системе зафиксированы аварийные синие экраны (найдено $($dumps.Count) дампов)."
+            $bsodSol = "Удалите старый видеодрайвер под ноль через [3]->[5] (DDU) и установите свежий. Проверьте память."
+            if ($bsodEvent) {
+                $msg = $bsodEvent.Message
+                if ($msg -match "0x0000001a" -or $msg -match "MEMORY_MANAGEMENT") {
+                    $bsodDesc = "Синие экраны вызваны ошибкой памяти (MEMORY_MANAGEMENT). Одна из планок RAM работает со сбоями."
+                    $bsodSol = "Протрите ластиком контакты оперативной памяти, протестируйте планки по одной."
+                } elseif ($msg -match "0x000000d1" -or $msg -match "0x0000003b" -or $msg -match "0x0000007e" -or $msg -match "DRIVER_") {
+                    $bsodDesc = "Синие экраны вызваны сбоем драйвера (видеокарта, Wi-Fi адаптер или чипсет). Железо цело, сбоит софт."
+                    $bsodSol = "Выполните чистую переустановку видеодрайвера через меню [3]->[5] (DDU)."
+                } elseif ($msg -match "0x00000124") {
+                    $bsodDesc = "Синий экран вызван фатальной ошибкой процессора (WHEA_UNCORRECTABLE_ERROR)."
+                    $bsodSol = "Проверьте охлаждение процессора, замените термопасту, проверьте напряжения блока питания."
+                }
+            }
+            $issues += [PSCustomObject]@{
+                Level = "КРИТИЧНО"
+                Component = "Синие экраны (BSOD)"
+                PlainReason = $bsodDesc
+                Solution = $bsodSol
+            }
+        }
+        if (-not $crashIssue) {
+            Write-Host " [ ОК ]" -ForegroundColor Green
+        } else {
+            Write-Host " [ НАЙДЕНЫ СБОИ ]" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host " [ ПРОПУЩЕНО ]" -ForegroundColor DarkGray
+    }
+
+    # 4. ТЕСТ ЦЕЛОСТНОСТИ СИСТЕМЫ WINDOWS (DISM CHECKHEALTH)
+    Write-Host " [4/6] Проверка целостности системных файлов Windows..." -NoNewline
+    try {
+        $dismCheck = dism.exe /Online /Cleanup-Image /CheckHealth 2>&1 | Out-String
+        if ($dismCheck -match "repairable" -or $dismCheck -match "повреждено" -or $dismCheck -match "Corrupt") {
+            Write-Host " [ ПОВРЕЖДЕНА ]" -ForegroundColor Red
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "Хранилище Windows"
+                PlainReason = "Обнаружены повреждения в системных файлах Windows после некорректного выключения или сбоя."
+                Solution = "Запустите восстановление в 1 клик через меню [5]->[4] (Проверка SFC + DISM)."
+            }
+        } else {
+            Write-Host " [ ОК ]" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host " [ ОК ]" -ForegroundColor Green
+    }
+
+    # 5. ТЕСТ БАТАРЕИ (ДЛЯ НОУТБУКОВ)
+    Write-Host " [5/6] Проверка аккумулятора и износа батареи..." -NoNewline
+    try {
+        $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
+        if ($battery) {
+            $wear = 0
+            if ($battery.DesignCapacity -and $battery.FullChargeCapacity -and $battery.DesignCapacity -gt 0) {
+                $wear = [math]::Round((1 - ($battery.FullChargeCapacity / $battery.DesignCapacity)) * 100, 0)
+            }
+            if ($wear -gt 45) {
+                Write-Host " [ ВЫСОКИЙ ИЗНОС ]" -ForegroundColor Yellow
+                $issues += [PSCustomObject]@{
+                    Level = "ВНИМАНИЕ"
+                    Component = "Батарея ноутбука"
+                    PlainReason = "Износ аккумулятора составляет $wear%. Батарея потеряла почти половину первоначальной емкости."
+                    Solution = "Ноутбук будет быстро разряжаться. Подробный отчет можно открыть через меню [2]->[1]."
+                }
+            } else {
+                Write-Host " [ ОК (Износ $wear%) ]" -ForegroundColor Green
+            }
+        } else {
+            Write-Host " [ СТАЦИОНАРНЫЙ ПК ]" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host " [ ПРОПУЩЕНО ]" -ForegroundColor DarkGray
+    }
+
+    # 6. ТЕСТ СЕТИ И DNS
+    Write-Host " [6/6] Проверка сети, роутера и резолвинга DNS..." -NoNewline
+    $netIssue = $false
+    try {
+        # Пинг роутера (шлюза)
+        $route = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gw = $route.NextHop
+        $gwOk = $false
+        if ($gw) {
+            $gwOk = Test-Connection -ComputerName $gw -Count 1 -Quiet -ErrorAction SilentlyContinue
+        }
+        $inetOk = Test-Connection -ComputerName 1.1.1.1 -Count 1 -Quiet -ErrorAction SilentlyContinue
+        $dnsOk = $false
+        try {
+            $dnsRes = [System.Net.Dns]::GetHostAddresses("microsoft.com")
+            if ($dnsRes) { $dnsOk = $true }
+        } catch {}
+
+        if (-not $gwOk -and $gw) {
+            $netIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "Локальная сеть"
+                PlainReason = "Компьютер не видит роутер (шлюз $gw не отвечает)."
+                Solution = "Проверьте сетевой кабель или переподключитесь к Wi-Fi. Выполните сброс сети через [4]->[1]."
+            }
+        } elseif ($gwOk -and -not $inetOk) {
+            $netIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "Интернет"
+                PlainReason = "Роутер доступен, но нет выхода во внешнюю сеть интернет."
+                Solution = "Проблема на стороне интернет-провайдера или настроек роутера."
+            }
+        } elseif ($inetOk -and -not $dnsOk) {
+            $netIssue = $true
+            $issues += [PSCustomObject]@{
+                Level = "ВНИМАНИЕ"
+                Component = "DNS Сервер"
+                PlainReason = "Интернет подключен, но DNS-сервер не переводит имена сайтов в адреса (страницы не открываются)."
+                Solution = "Включите надежный быстрый DNS в 1 клик через меню [4]->[5] (Cloudflare DNS 1.1.1.1)."
+            }
+        }
+
+        if (-not $netIssue) {
+            Write-Host " [ ОК ]" -ForegroundColor Green
+        } else {
+            Write-Host " [ СБОЙ СЕТИ ]" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host " [ ПРОПУЩЕНО ]" -ForegroundColor DarkGray
+    }
+
+    # ИТОГОВЫЙ ОТЧЕТ И РЕКОМЕНДАЦИИ ПРОСТЫМИ СЛОВАМИ
+    Write-Host "`n==============================================================================================" -ForegroundColor Cyan
+    Write-Host "                        ЗАКЛЮЧЕНИЕ 'ДОКТОРА ПК' (ПРОСТЫМИ СЛОВАМИ)                             " -ForegroundColor Yellow
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+
+    if ($issues.Count -eq 0) {
+        Write-Host "`n  [OK] ОТЛИЧНЫЕ НОВОСТИ!" -ForegroundColor Green
+        Write-Host "  Все проверенные узлы железа и операционной системы находятся в отличном состоянии." -ForegroundColor White
+        Write-Host "  Критических ошибок дисков, оперативной памяти, WHEA-сбоев и повреждений Windows не найдено.`n" -ForegroundColor Gray
+    } else {
+        Write-Host "`n  Обнаружено проблемных мест: " -NoNewline -ForegroundColor White
+        Write-Host ($issues.Count) -ForegroundColor Red
+        Write-Host ""
+
+        $num = 1
+        foreach ($iss in $issues) {
+            $color = if ($iss.Level -eq "КРИТИЧНО") { "Red" } else { "Yellow" }
+            Write-Host "  [$num] [$($iss.Level)] Компонент: $($iss.Component)" -ForegroundColor $color
+            Write-Host "      • Что не так: " -NoNewline -ForegroundColor White
+            Write-Host ($iss.PlainReason) -ForegroundColor Gray
+            Write-Host "      • Как починить: " -NoNewline -ForegroundColor Cyan
+            Write-Host ($iss.Solution) -ForegroundColor Green
+            Write-Host ""
+            $num++
+        }
+    }
+
+    Write-Host "==============================================================================================" -ForegroundColor Cyan
+    Pause
+}
+
 function Show-Header {
     Clear-Host
     Write-Host "==============================================================================================" -ForegroundColor Cyan
-    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.2                                 " -ForegroundColor Yellow
+    Write-Host "                           УНИВЕРСАЛЬНЫЙ НАБОР СИСАДМИНА v1.3                                 " -ForegroundColor Yellow
     Write-Host "==============================================================================================" -ForegroundColor Cyan
     Write-Host ("  ОС: " + $osName + " (" + $arch + ")") -ForegroundColor White
     Write-Host ("  Флешка: " + $DriveRoot) -ForegroundColor DarkGray
@@ -171,6 +457,7 @@ function Main-Menu {
     # Блок 2
     Write-Host "  [ 2 ] ДИАГНОСТИКА ЖЕЛЕЗА И ТЕСТЫ" -ForegroundColor Yellow
     Write-Host "  +-----------------------------------+------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host "  | [0] ДОКТОР ПК (Авто-диагностика)  | Быстрый поиск проблем железа и Windows простыми слов.|" -ForegroundColor White
     Write-Host "  | [1] HTML-отчет о батарее          | Анализ износа аккумулятора и емкости ноутбука        |" -ForegroundColor Gray
     Write-Host "  | [2] Показать пароли Wi-Fi         | Вывод всех сохраненных паролей от сетей на этом ПК   |" -ForegroundColor Gray
     Write-Host "  | [3] Проверка дампов BSOD          | Поиск логов синих экранов в C:\Windows\Minidump      |" -ForegroundColor Gray
@@ -294,6 +581,7 @@ function SubMenu-Soft {
 function SubMenu-Diag {
     Show-Header
     Write-Host "`n--- [ ДИАГНОСТИКА И ТЕСТЫ ] ---" -ForegroundColor Yellow
+    Write-Host "  [0] ДОКТОР ПК (Экспресс-диагностика проблем простыми словами)" -ForegroundColor Green
     Write-Host "  [1] Сгенерировать HTML-отчет о батарее ноутбука (Износ аккумулятора)"
     Write-Host "  [2] Показать все сохраненные пароли Wi-Fi на этом ПК"
     Write-Host "  [3] Проверить синие экраны (Minidump / BSOD)"
@@ -302,10 +590,11 @@ function SubMenu-Diag {
     Write-Host "  [6] Запустить стресс-тесты (Папка Diagnostic: AIDA64, FurMark, OCCT)"
     Write-Host "  [7] Запуск Snappy Driver Installer (Установка драйверов)"
     Write-Host "  [8] Открыть Sysinternals (Autoruns 14.30 и Process Explorer 17.12)"
-    Write-Host "  [0] Назад в главное меню"
+    Write-Host "  [00] Назад в главное меню"
     
     $c = Read-Host "`nВыберите пункт"
     switch ($c) {
+        "0" { Invoke-SystemDoctor }
         "1" {
             $report = Join-Path $env:USERPROFILE "Desktop\Battery_Report.html"
             powercfg /batteryreport /output $report

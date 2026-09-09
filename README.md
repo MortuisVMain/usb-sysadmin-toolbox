@@ -1,9 +1,9 @@
-# 🧰 USB SysAdmin Universal Toolbox (v1.2.0-beta)
+# 🧰 USB SysAdmin Universal Toolbox (v1.3.0-beta)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PowerShell: 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://microsoft.com/powershell)
 [![Windows: 7 / 8.1 / 10 / 11](https://img.shields.io/badge/Windows-7%20%7C%208.1%20%7C%2010%20%7C%2011-0078D6.svg)](https://microsoft.com/windows)
-[![Release: Beta](https://img.shields.io/badge/Release-Beta%20v1.2.0-orange.svg)](https://github.com/MortuisVMain/usb-sysadmin-toolbox)
+[![Release: Beta](https://img.shields.io/badge/Release-Beta%20v1.3.0-orange.svg)](https://github.com/MortuisVMain/usb-sysadmin-toolbox)
 
 Универсальный модульный инструмент для системных администраторов, мастеров по ремонту ПК и энтузиастов. Предназначен для работы на мультизагрузочных флешках (**Ventoy** / LiveUSB) или прямо в рабочей среде Windows.
 
@@ -11,6 +11,7 @@
 
 ## ⚡ Главные особенности
 
+- **🩺 Интеллектуальный «Доктор ПК»:** Экспресс-тест дисков (SMART), оперативной памяти (утечки), синих экранов (BSOD/WHEA), батареи и сети. Выдает понятный отчет простыми словами: «Что сломалось и какую кнопку нажать для починки».
 - **Запуск в 1 клик с иконки (Супер-Администратор):** Готовый ярлык `Toolbox.lnk` с щитом UAC сразу запускает инструмент с наивысшими правами.
 - **Разблокировка системных привилегий (SeDebugPrivilege):** Активация прав `SeDebug`, `SeTakeOwnership` и `SeBackup` исключает ошибки «Отказано в доступе» при твиках реестра и файлов.
 - **Автономность и умный Fallback:** Работает как онлайн (напрямую загружая скрипты и утилиты с GitHub), так и в полном оффлайне с вашей флешки.
